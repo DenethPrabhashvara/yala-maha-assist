@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yala-Maha Assist · Farmer Portal & Irrigation Management</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Sinhala:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+
+<!-- Core Domain Configurations -->
+<script src="river-config.js"></script>
+<script src="farm-config.js"></script>
+<script src="js/river-gauges.js"></script>
+<script src="js/river-forecast.js"></script>
+<script src="js/river-risk.js"></script>
+<script src="js/river-page.js"></script>
+
+
+
+<!-- Modular Application Scripts -->
+<script src="js/icons.js"></script>
+<script src="js/translations.js"></script>
+<script src="js/schematic-map.js"></script>
+<script src="js/farmer-portal.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/sms-gateway.js"></script>
+<script src="js/coverage-map.js"></script>
+<script src="js/river-monitoring.js"></script>
+<script src="js/app.js"></script>
+</head>
+<body>
+<div class="app">
+ <div class="hdr">
+  <div class="brand"><div class="logo"><svg class="i" style="color:#fff;width:15px;height:15px" viewBox="0 0 24 24"><path d="M12 3s6 6.500 6 11a6 6 0 0 1-12 0c0-4.500 6-11 6-11z"/></svg></div>Yala-Maha Assist</div>
+  <span class="chip"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/></svg><span id="loc">Palugaswewa Tank</span></span>
+  <span class="chip amb">☀ MAHA KANNAYA 2026</span><span class="sp"></span>
+  <button class="hb" id="qb">Quick Broadcast SMS</button><button class="hb o" id="so">Sign out</button>
+ </div>
+ <div class="nav" id="nav"><button data-p="dash" class="on">Dashboard</button><button data-p="river">River</button><button data-p="map">Coverage Map</button><button data-p="sms">SMS Gateway</button><button data-p="portal">Farmer Portal</button><div class="nav-basin-wrap"><label for="basin-select" class="nav-basin-lbl"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Basin:</label><select id="basin-select" class="nav-basin-select" aria-label="Select River Basin"><optgroup label="Yan Oya River Basin"><option value="Horowpothana" selected>Yan Oya · Horowpothana</option></optgroup><optgroup label="Mahaweli Ganga Basin"><option value="Manampitiya">Mahaweli · Manampitiya</option><option value="Weraganthota">Mahaweli · Weraganthota</option><option value="Peradeniya">Mahaweli · Peradeniya</option><option value="Nawalapitiya">Mahaweli · Nawalapitiya</option></optgroup></select></div></div>
+
+ <section class="page on" id="page-dash">
+  <div class="pt">Tank Dashboard</div><div class="ps">Palugaswewa Tank, sample data · Updated 6:00 AM</div>
+  <div class="card" id="rv-risk-card" style="margin-bottom:14px">
+ <div class="row" style="flex-wrap:wrap;gap:10px">
+  <div>
+   <div class="k">Overall flood risk (measured gauges + forecast)</div>
+   <div style="font-size:26px;font-weight:800;margin-top:4px" id="rv-risk-level">Loading...</div>
+   <div class="cap" style="text-transform:none" id="rv-risk-msg"></div>
+  </div>
+  <span class="chip" id="rv-risk-updated"></span>
+ </div>
+ <ul id="rv-risk-reasons" style="margin:10px 0 0;padding-left:18px;font-size:12.5px;line-height:1.7"></ul>
+</div>
+  <div class="g4">
+   <div class="card"><div class="k">Water level</div><div class="v">38%<div class="bar"><i style="width:38%;background:#F59E0B"></i></div></div><div class="cap">1.03M of 2.70M m³</div></div>
+   <div class="card"><div class="k">7-day rain forecast</div><div class="v">18.5 mm<span class="pill ok">Light mid-week</span></div><div class="cap"><i>Source: Open-Meteo</i></div></div>
+   <div class="card"><div class="k">Tank status</div><div class="v">Moderate<span class="pill am">Watch closely</span></div><div class="cap">Next release: Thu 6:00 AM</div></div>
+   <div class="card"><div class="k">Farmer contacts</div><div class="v">412<span class="pill ok">Reachable</span></div><div class="cap">Registered phone numbers</div></div>
+  </div>
+  <div class="cols d-cols">
+   <div class="card"><div class="row"><div class="ct" style="margin:0">Water Management</div><span class="pill am">Moderate risk</span></div>
+    <div class="tankw"><svg viewBox="0 0 160 210"><defs><clipPath id="tc"><rect x="10" y="10" width="140" height="190" rx="24"/></clipPath><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FACC15"/><stop offset="1" stop-color="#FCD9A0"/></linearGradient></defs><rect x="10" y="10" width="140" height="190" rx="24" fill="#FFFBEB" stroke="#FDE68A" stroke-width="4"/><g clip-path="url(#tc)"><path d="M0 128q20-10 40 0t40 0 40 0 40 0V210H0z" fill="url(#tg)"/><path d="M0 120q20-10 40 0t40 0 40 0 40 0" fill="none" stroke="#F59E0B" stroke-width="1.500"/></g><text x="80" y="62" text-anchor="middle" font-size="36" font-weight="800" fill="#B45309" font-family="Inter,sans-serif">38%</text><text x="80" y="80" text-anchor="middle" font-size="9" fill="#64748B" font-family="Inter,sans-serif">CAPACITY USED</text></svg></div>
+    <div class="rows"><div>Max capacity<b>2.70M m³</b></div><div>Current volume<b>1.03M m³</b></div><div>Water height<b>2.58 m</b></div></div></div>
+   <div>
+    <div class="card"><div class="row"><div class="ct" style="margin:0">Level history, last 30 days</div><div class="legend"><span><i style="background:#0F766E"></i>Water Level</span><span><i style="background:#E11D48"></i>Critical Level (20%)</span></div></div><svg class="chart" id="chart" viewBox="0 0 640 270"></svg></div>
+    <div class="card"><div class="row"><div class="k" style="font-weight:700;letter-spacing:.04em">7-DAY RAINFALL (MM)</div><span class="chip" style="font-size:10px;background:var(--soft);border-color:var(--soft);color:var(--mut)">Last 4 days reported</span></div><div class="rain" id="rain"></div></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="page" id="page-river">
+  <div class="row" style="align-items:flex-start;flex-wrap:wrap;margin-bottom:8px">
+   <div>
+    <div class="pt">River Monitoring &amp; Flood Warning</div>
+    <div class="ps" style="margin-bottom:4px"><span id="rv-basin-subtitle">Yan Oya River Basin</span> · Open-Meteo &amp; Irrigation Dept. Real-time API · <span id="rv-updated">Updated just now</span></div>
+   </div>
+   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="chip" id="rv-api-status"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981;margin-right:4px"></span>Live API</span>
+    <button class="hb o" id="rv-refresh-btn" style="padding:7px 13px;font-size:12px"><svg class="i" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Refresh</button>
+   </div>
+  </div>
+
+  <div class="card" style="padding:10px 14px;margin-bottom:14px">
+   <div class="row" style="flex-wrap:wrap;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+     <span style="font-size:12.5px;font-weight:700;color:var(--ink)">Auto-send SMS:</span>
+     <div class="seg2" id="rv-auto-seg"><button class="on" data-auto="1">ON (Automatic)</button><button data-auto="0">OFF (Officer Approval)</button></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+     <span class="small" style="font-weight:600">Simulate Scenario:</span>
+     <div class="seg2" id="rv-scen-seg">
+      <button class="on" data-sc="live">Live API</button>
+      <button data-sc="safe">Safe (48%)</button>
+      <button data-sc="watch">Watch (70%)</button>
+      <button data-sc="warning">Warning (95%)</button>
+      <button data-sc="flood">Flood (107%)</button>
+     </div>
+    </div>
+   </div>
+  </div>
+
+  <div id="rv-officer-banner" class="card" style="display:none;background:var(--red-bg);border:1.5px solid var(--red-b);padding:14px 16px;margin-bottom:14px">
+   <div class="row" style="align-items:center;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;gap:10px;align-items:center">
+     <span style="color:var(--red)"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg></span>
+     <div>
+      <b style="color:var(--red);font-size:13.5px" id="rv-banner-title">Flood Broadcast Pending Officer Approval</b>
+      <div style="font-size:12.5px;color:var(--body);margin-top:2px" id="rv-banner-msg">412 farmers in Downstream Kudawewa &amp; Palugaswewa are queued for early warning dispatch.</div>
+     </div>
+    </div>
+    <div style="display:flex;gap:8px">
+     <button class="hb" id="rv-btn-approve" style="background:var(--red);font-size:12.5px;padding:8px 14px">Approve &amp; Send Broadcast</button>
+     <button class="hb o" id="rv-btn-dismiss" style="font-size:12.5px;padding:8px 14px">Cancel Alert</button>
+    </div>
+   </div>
+  </div>
+
+  <div class="g4">
+   <div class="card">
+    <div class="k">Current river level</div>
+    <div class="v"><span id="rv-stat-curr">3.65 m</span><div class="bar"><i id="rv-bar-curr" style="width:81%;background:#F59E0B"></i></div></div>
+    <div class="cap" id="rv-cap-curr">81% of 4.50 m safe capacity</div>
+   </div>
+   <div class="card">
+    <div class="k">Predicted peak level</div>
+    <div class="v"><span id="rv-stat-peak">4.82 m</span><span class="pill bd" id="rv-pill-peak">+0.32 m overflow</span></div>
+    <div class="cap" id="rv-cap-peak">107% of safe capacity</div>
+   </div>
+   <div class="card">
+    <div class="k">Flood risk level</div>
+    <div class="v"><span id="rv-stat-risk" style="color:var(--red)">Flood</span><span class="pill bd" id="rv-pill-risk">Critical</span></div>
+    <div class="cap" id="rv-cap-risk">Threshold: &gt; 100% of capacity</div>
+   </div>
+   <div class="card">
+    <div class="k">Time to peak exceedance</div>
+    <div class="v"><span id="rv-stat-time">Thursday</span><span class="pill am" id="rv-pill-time">~48 hrs</span></div>
+    <div class="cap" id="rv-cap-time">Expected Thursday evening</div>
+   </div>
+  </div>
+  
+  <div class="card" style="margin-bottom:14px">
+ <div class="row" style="margin-bottom:10px;flex-wrap:wrap">
+  <div>
+   <div class="ct" style="margin:0">Measured River Gauges</div>
+   <div class="cs" style="margin:0">Irrigation Department readings · <span id="rv-gauges-updated">Loading...</span></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+   <span class="chip" id="rv-gauges-api-mark"><span class="pulse-dot"></span>Live API Data</span>
+   <span class="chip">Source: Irrigation Dept.</span>
+  </div>
+ </div>
+ <div class="tw"><table>
+  <thead><tr><th>Station</th><th>River</th><th>Level</th><th>Status</th><th>Trend</th><th>Last reading</th></tr></thead>
+  <tbody id="rv-gauges-tbody"><tr><td colspan="6">Loading...</td></tr></tbody>
+ </table></div>
+</div>
+
+  <div class="cols d-cols">
+   <div class="card">
+    <div class="row"><div class="ct" style="margin:0">River Gauge &amp; Flow</div><span class="pill bd" id="rv-gauge-badge">Overflow risk</span></div>
+    <div class="tankw" id="rv-gauge-wrap">
+     <svg viewBox="0 0 160 210" id="rv-gauge-svg">
+      <defs>
+       <clipPath id="rc-clip"><rect x="10" y="10" width="140" height="190" rx="24"/></clipPath>
+       <linearGradient id="rg-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#F43F5E"/>
+        <stop offset="1" stop-color="#FDA4AF"/>
+       </linearGradient>
+      </defs>
+      <rect x="10" y="10" width="140" height="190" rx="24" fill="#FFF1F2" stroke="#FECDD3" stroke-width="4"/>
+      <g clip-path="url(#rc-clip)">
+       <path d="M0 65q20-10 40 0t40 0 40 0 40 0V210H0z" fill="url(#rg-grad)"/>
+       <path d="M0 58q20-10 40 0t40 0 40 0 40 0" fill="none" stroke="#E11D48" stroke-width="1.500"/>
+       <line x1="10" x2="150" y1="80" y2="80" stroke="#BE123C" stroke-dasharray="4 3" stroke-width="1.5"/>
+       <text x="80" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="#BE123C">SAFE CAPACITY 4.50m</text>
+      </g>
+      <text x="80" y="44" text-anchor="middle" font-size="30" font-weight="800" fill="#BE123C" font-family="Inter,sans-serif" id="rv-gauge-pct">107%</text>
+      <text x="80" y="58" text-anchor="middle" font-size="9" fill="#64748B" font-family="Inter,sans-serif" id="rv-gauge-txt">SAFE CAPACITY EXCEEDED</text>
+     </svg>
+    </div>
+    <div class="rows">
+     <div>Safe bank capacity<b>4.50 m</b></div>
+     <div>Current discharge<b id="rv-row-qcurr">37.0 m³/s</b></div>
+     <div>Peak forecast discharge<b id="rv-row-qpeak">68.5 m³/s</b></div>
+     <div>Catchment 7d rain<b id="rv-row-rain">46.0 mm</b></div>
+    </div>
+   </div>
+   <div>
+    <div class="card">
+     <div class="row">
+      <div class="ct" style="margin:0">River Level History (7d) &amp; Forecast (7d)</div>
+      <div class="legend">
+       <span><i style="background:#0F766E"></i>Observed (Past 7d)</span>
+       <span><i style="background:#2563EB"></i>Forecast (Next 7d)</span>
+       <span><i style="background:#E11D48"></i>Safe Capacity (4.50m)</span>
+      </div>
+     </div>
+     <svg class="chart" id="rv-chart" viewBox="0 0 640 270"></svg>
+    </div>
+    <div class="card">
+     <div class="row">
+      <div>
+       <div class="ct" style="margin:0">Automated SMS Broadcast Dispatch</div>
+       <div class="cs" style="margin:0">Dispatches multi-lingual early warning SMS when risk reaches Warning or Flood</div>
+      </div>
+      <span class="pill ok" id="rv-dispatch-pill">Auto-Dispatch Active</span>
+     </div>
+     <div class="prev" style="margin-top:12px">
+      <div>
+       <div class="small" style="color:var(--ink);font-weight:600">English SMS</div>
+       <div class="bub" id="rv-prev-en" lang="en">Flood warning: Yan Oya River may overflow by Thursday evening. Move livestock and equipment to higher ground. Avoid crossing the river. — Yala-Maha Assist</div>
+       <div class="cap" style="text-transform:none">Downstream · 412 farmers</div>
+      </div>
+      <div>
+       <div class="small" style="color:var(--ink);font-weight:600">සිංහල (Sinhala SMS)</div>
+       <div class="bub" id="rv-prev-si" lang="si">ගංවතුර අනතුරු ඇඟවීම: බ්‍රහස්පතින්දා සවස් වන විට යාන් ඔය පිටාර ගැලීමේ අවදානමක් ඇත. ගවයන් සහ උපකරණ උස් ස්ථානවලට ගෙන යන්න. ගඟ හරහා යාමෙන් වළකින්න. — Yala-Maha Assist</div>
+       <div class="cap" style="text-transform:none">Downstream · 412 farmers</div>
+      </div>
+      <div>
+       <div class="small" style="color:var(--ink);font-weight:600">தமிழ் (Tamil SMS)</div>
+       <div class="bub" id="rv-prev-ta" lang="ta">வெள்ள எச்சரிக்கை: வியாழன் மாலைக்குள் யான் ஓயா நதி நிரம்பி வழியக்கூடும். கால்நடைகள் மற்றும் உபகரணங்களை உயரமான இடங்களுக்கு நகர்த்தவும். நதியைக் கடப்பதைத் தவிர்க்கவும். — Yala-Maha Assist</div>
+       <div class="cap" style="text-transform:none">Downstream · 412 farmers</div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+
+
+  <div class="card" style="margin-bottom:14px">
+ <div class="row" style="margin-bottom:10px;flex-wrap:wrap">
+  <div>
+   <div class="ct" style="margin:0">7-Day Outlook</div>
+   <div class="cs" style="margin:0" id="rv-forecast-summary">Loading...</div>
+  </div>
+  <span class="chip">Source: Open-Meteo</span>
+ </div>
+ <div class="tw"><table>
+  <thead><tr><th>Day</th><th>Rain</th><th>River flow</th><th>Flow, high end</th><th>Outlook</th></tr></thead>
+  <tbody id="rv-forecast-tbody"><tr><td colspan="5">Loading...</td></tr></tbody>
+ </table></div>
+</div>
+
+  <div class="card">
+   <div class="row" style="margin-bottom:10px">
+    <div>
+     <div class="ct" style="margin:0">Vulnerable Downstream Villages &amp; Agricultural Risk</div>
+     <div class="cs" style="margin:0">Topographical exposure and farmer protection actions along Yan Oya River</div>
+    </div>
+    <span class="chip" id="rv-villages-summary">2 Villages at Flood Overflow Risk</span>
+   </div>
+   <div class="tw">
+    <table>
+     <thead>
+      <tr>
+       <th>Village / Tract</th>
+       <th>River Distance</th>
+       <th>Topographical Zone</th>
+       <th>Bank Safe Level</th>
+       <th>Projected Peak</th>
+       <th>Risk Status</th>
+       <th>Reachable Farmers</th>
+       <th>Safety Precaution</th>
+      </tr>
+     </thead>
+     <tbody id="rv-villages-tbody"></tbody>
+    </table>
+   </div>
+  </div>
+ </section>
+
+ <section class="page" id="page-map">
+  <div class="row" style="align-items:flex-start;flex-wrap:wrap;margin-bottom:8px">
+   <div>
+    <div class="pt" id="map-header-title">Farm Coverage Map</div>
+    <div class="ps" style="margin-bottom:4px">Mahaweli B Zone · Vulnerability tracking for water supply &amp; mobile connectivity · <span id="map-updated">Updated live from farm registry</span></div>
+   </div>
+   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button class="hb" id="map-btn-sms" style="padding:8px 14px;font-size:12.5px"><svg class="i" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg> Send SMS to Filtered Farms</button>
+    <button class="hb o" id="map-btn-refresh" style="padding:8px 13px;font-size:12.5px"><svg class="i" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Refresh</button>
+   </div>
+  </div>
+
+  <!-- Summary Stat Cards -->
+  <div class="g4">
+   <div class="card">
+    <div class="k">Total registered farms</div>
+    <div class="v"><span id="map-stat-farms">15</span><span class="pill ok" id="map-pill-farms">Mahaweli B</span></div>
+    <div class="cap">Active registered farm plots</div>
+   </div>
+   <div class="card">
+    <div class="k">Total cultivated area</div>
+    <div class="v"><span id="map-stat-acres">48.7</span><span class="small" style="font-weight:600;color:var(--mut);margin-left:4px">acres</span></div>
+    <div class="cap">Paddy &amp; OFC land under irrigation</div>
+   </div>
+   <div class="card">
+    <div class="k">Low water coverage (&lt; 70%)</div>
+    <div class="v" style="color:#B45309"><span id="map-stat-low-water">6</span><span class="pill am" id="map-pill-water">Attention</span></div>
+    <div class="cap">Tail-end canal or elevated tracts</div>
+   </div>
+   <div class="card">
+    <div class="k">Weak mobile signal (&lt; 70%)</div>
+    <div class="v" style="color:#BE123C"><span id="map-stat-low-signal">5</span><span class="pill bd" id="map-pill-signal">3 Critical (&lt;40%)</span></div>
+    <div class="cap">Requires officer in-person notice</div>
+   </div>
+  </div>
+
+  <!-- Controls Card: Mode Switcher & Filters -->
+  <div class="card" style="padding:12px 16px;margin-bottom:14px">
+   <div class="row" style="flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+     <span style="font-size:12.5px;font-weight:700;color:var(--ink)">Coverage Mode:</span>
+     <div class="seg2" id="map-mode-seg">
+      <button class="on" data-m="combined">Combined (Worst-Case)</button>
+      <button data-m="water">Water Supply</button>
+      <button data-m="signal">Mobile / SMS Signal</button>
+     </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+     <div style="display:flex;align-items:center;gap:6px">
+      <span class="small" style="font-weight:600">Level:</span>
+      <select id="map-filter-level" style="width:auto;padding:6px 10px;font-size:12.5px;border-radius:8px">
+       <option value="all">All Levels</option>
+       <option value="good">Good (≥ 70%)</option>
+       <option value="low">Low (40 - 69%)</option>
+       <option value="veryLow">Very Low (&lt; 40%)</option>
+      </select>
+     </div>
+     <div style="display:flex;align-items:center;gap:6px">
+      <span class="small" style="font-weight:600">Crop:</span>
+      <select id="map-filter-crop" style="width:auto;padding:6px 10px;font-size:12.5px;border-radius:8px">
+       <option value="all">All Crops</option>
+       <option value="paddy">Paddy</option>
+       <option value="vegetables">Vegetables</option>
+       <option value="fruit">Fruit</option>
+       <option value="other">Other Field Crops</option>
+       <option value="mixed">Mixed</option>
+      </select>
+     </div>
+     <div style="display:flex;align-items:center;gap:6px">
+      <span class="small" style="font-weight:600">Village:</span>
+      <select id="map-filter-village" style="width:auto;padding:6px 10px;font-size:12.5px;border-radius:8px">
+       <option value="all">All Villages</option>
+       <option value="Palugaswewa North">Palugaswewa North</option>
+       <option value="Palugaswewa South">Palugaswewa South</option>
+       <option value="Kudawewa Lowlands">Kudawewa Lowlands</option>
+       <option value="Horiwila Village">Horiwila Village</option>
+       <option value="Maradankadawala">Maradankadawala</option>
+      </select>
+     </div>
+    </div>
+   </div>
+  </div>
+
+  <!-- Advisory Card for Critical Signal Farms -->
+  <div id="map-signal-advisory" class="card" style="background:#FFFBEB;border:1.5px solid #FDE68A;padding:12px 16px;margin-bottom:14px">
+   <div class="row" style="align-items:flex-start;gap:10px">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+     <span style="color:#B45309;margin-top:2px"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg></span>
+     <div>
+      <b style="color:#B45309;font-size:13px">Officer Advisory: In-Person Contact Recommended for Shaded Reception Plots</b>
+      <div style="font-size:12px;color:var(--body);line-height:1.5;margin-top:2px">
+       Farms with signal below 40% (such as Kudawewa Lowlands Valley) may not receive automated SMS broadcasts. We advise dispatching an Agrarian Development Officer or displaying written bulletins at the Palugaswewa Agrarian Service Center.
+      </div>
+     </div>
+    </div>
+    <span class="pill bd" style="white-space:nowrap">Signal Advisory</span>
+   </div>
+  </div>
+
+  <!-- Schematic SVG Coverage Map Card -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px;position:relative">
+   <div style="padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div>
+     <div class="ct" style="margin:0">Schematic Farm Plots &amp; Irrigation Infrastructure</div>
+     <div class="cs" style="margin:0">Click any farm pin to view farmer first name, crop and coverage metrics (NIC &amp; phone protected)</div>
+    </div>
+    <div class="legend" id="map-legend">
+     <span><i style="background:#10B981"></i>Good (≥ 70%)</span>
+     <span><i style="background:#F59E0B"></i>Low (40 - 69%)</span>
+     <span><i style="background:#EF4444"></i>Very Low (&lt; 40%)</span>
+    </div>
+   </div>
+   
+   <div class="schematic-map" id="officer-map-container" style="height:480px;border:0;border-radius:0">
+    <div style="position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:5px;z-index:10">
+     <button class="zm-btn" id="map-zm-in" title="Zoom in">+</button>
+     <button class="zm-btn" id="map-zm-out" title="Zoom out">−</button>
+     <button class="zm-btn" id="map-zm-rst" title="Reset view">⟲</button>
+    </div>
+
+    <!-- Interactive Map Pin Popup Card -->
+    <div class="pin-card" id="map-farm-popup">
+     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+      <div>
+       <div style="font-weight:800;font-size:15px;color:var(--ink)" id="popup-farmer-name">Sunil</div>
+       <div class="small" id="popup-farmer-village">Palugaswewa North</div>
+      </div>
+      <button id="popup-close-btn" style="border:0;background:none;color:var(--mut);font-weight:700;font-size:16px;cursor:pointer;padding:0 4px">✕</button>
+     </div>
+     <div style="background:var(--soft);border-radius:10px;padding:8px 10px;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--mut);text-transform:uppercase;font-weight:700">Cultivation</div>
+      <div style="font-weight:700;font-size:13px;color:var(--pri);margin-top:2px" id="popup-crop-info">White Rice (BG) · 3.5 acres</div>
+     </div>
+     <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px">
+       <span style="color:var(--mut)">Water Supply</span>
+       <b id="popup-water-val" style="color:#047857">88% (Good)</b>
+      </div>
+      <div class="bar" style="width:100%"><i id="popup-water-bar" style="width:88%;background:#10B981"></i></div>
+     </div>
+     <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px">
+       <span style="color:var(--mut)">Mobile / SMS Signal</span>
+       <b id="popup-signal-val" style="color:#047857">92% (Good)</b>
+      </div>
+      <div class="bar" style="width:100%"><i id="popup-signal-bar" style="width:92%;background:#10B981"></i></div>
+     </div>
+     <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--line);font-size:11px;color:var(--mut)">
+      <span>🔒 NIC &amp; Phone: Private</span>
+      <span class="pill ok" id="popup-action-pill">SMS Reachable</span>
+     </div>
+    </div>
+
+    <!-- SVG Schematic Map -->
+    <svg id="officer-svg-map" viewBox="0 0 800 500" style="width:100%;height:100%;display:block">
+     <g id="officer-map-zoom-group">
+      <!-- Generated via JS -->
+     </g>
+    </svg>
+   </div>
+  </div>
+
+  <!-- Low Coverage & Vulnerable Farms Table -->
+  <div class="card">
+   <div class="row" style="margin-bottom:12px;flex-wrap:wrap">
+    <div>
+     <div class="ct" style="margin:0">Vulnerable &amp; Low-Coverage Farm Directory</div>
+     <div class="cs" style="margin:0">Prioritized by water access deficits or weak mobile SMS reachability</div>
+    </div>
+    <span class="chip amb" id="map-table-summary">8 Farms Require Action</span>
+   </div>
+   <div class="tw">
+    <table>
+     <thead>
+      <tr>
+       <th>Farm ID</th>
+       <th>Farmer</th>
+       <th>Village / Tract</th>
+       <th>Crops &amp; Acreage</th>
+       <th>Water Supply</th>
+       <th>Mobile Signal</th>
+       <th>Deficit Category</th>
+       <th>Recommended Action</th>
+      </tr>
+     </thead>
+     <tbody id="map-farms-tbody"></tbody>
+    </table>
+   </div>
+  </div>
+ </section>
+
+ <section class="page" id="page-sms">
+  <div class="pt">SMS Gateway &amp; Dispatch Log</div><div class="ps">Broadcast alerts and handle inbound farmer queries</div>
+  <div class="g4">
+   <div class="card"><div class="k">Sent today</div><div class="v">1,286</div><div class="cap" style="text-transform:none;font-size:12px">messages across 6 broadcasts</div></div>
+   <div class="card"><div class="k">Delivered</div><div class="v">94.2%</div><div class="bar" style="width:100%"><i style="width:94.2%;background:#10B981"></i></div></div>
+   <div class="card"><div class="k">Pending</div><div class="v" style="color:#B45309">38</div><div class="cap" style="text-transform:none;font-size:12px">awaiting carrier receipt</div></div>
+   <div class="card"><div class="k">Failed</div><div class="v" style="color:#BE123C">4</div><div class="cap" style="text-transform:none;font-size:12px">retry available</div></div>
+  </div>
+  <div class="cols s-cols">
+   <div class="card"><div class="row"><div class="ct" style="margin:0">Compose SMS Broadcast</div><span class="pill am">Draft</span></div>
+    <span class="fl">1 · Target group</span><div class="seg2" id="grp"><button data-g="Upstream">Upstream</button><button data-g="Downstream" class="on">Downstream</button><button data-g="All">All</button></div>
+    <div class="rec"><div><b><span id="rc" style="font-size:13px;color:var(--pri);font-weight:700">412</span> farmers will receive this</b><span>Kudawewa area · registered phone nodes</span></div><span class="pill ok" id="rb">412 recipients</span></div>
+    <span class="fl">2 · Language</span><div class="seg2" id="lg"><button data-l="si">Sinhala</button><button data-l="ta">தமிழ்</button><button data-l="en" class="on">English</button></div>
+    <div class="small" style="margin-top:8px">English: 160 characters per SMS · Sinhala / Tamil (Unicode): 70 per SMS</div>
+    <span class="fl">3 · Quick template</span><div class="tp" id="tp"></div>
+    <span class="fl">4 · Message</span><textarea id="msg" style="height:84px"></textarea>
+    <div class="row" style="margin-top:8px"><span class="small" id="cnt"></span><span class="pill ok" id="seg">1 SMS segment</span></div>
+    <span class="fl">5 · Delivery time</span><div class="seg2" id="dt"><button class="on">Send now</button><button>Schedule</button></div>
+    <div class="sum"><div><span>Recipients</span><b id="s1">412</b></div><div><span>Segments each</span><b id="s2">1</b></div><div><span>Total messages</span><b id="s3">412</b></div></div>
+    <div class="acts"><button class="btn o" id="sd">Save draft</button><button class="btn" id="sb">Send SMS Broadcast</button></div></div>
+   <div>
+    <div class="card"><div class="row"><div class="ct" style="margin:0">Live preview — how farmers see it</div><span class="pill ok">3 languages ready</span></div><div class="prev" style="margin-top:14px" id="pv"></div></div>
+    <div class="card"><div class="ct">Outbound Alert History</div><div class="cs">Delivery status per broadcast</div><div class="tw"><table><thead><tr><th>Sent</th><th>Group</th><th>Message</th><th>Reach</th><th>Status</th></tr></thead><tbody id="hist"></tbody></table></div></div>
+    <div class="card"><div class="ct">Inbound Query Log</div><div class="cs">Farmer texts and automatic replies</div><div class="tw"><table><thead><tr><th>Time</th><th>From</th><th>Message</th><th>Response</th></tr></thead><tbody><tr><td>6:12 AM</td><td>+94 77 ••• 4821</td><td>STATUS KAPAWA</td><td><span class="pill ok">Auto-reply sent</span></td></tr><tr><td>6:08 AM</td><td>+94 71 ••• 9033</td><td>NEXT RELEASE</td><td><span class="pill ok">Auto-reply sent</span></td></tr><tr><td>5:51 AM</td><td>+94 76 ••• 1207</td><td>CANAL BLOCKED</td><td><span class="pill am">Queued for officer</span></td></tr></tbody></table></div></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="page" id="page-portal"><div class="portal">
+  <div class="lrow"><div class="seg"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><div id="langs"><button data-l="en" class="on">EN</button><button data-l="si">සි</button><button data-l="ta">த</button></div></div></div>
+  <div class="tabs" id="tabs"></div><main id="view"></main>
+ </div></section>
+</div>
+<div class="toast" id="toast"></div>
+</body>
+</html>

@@ -4,7 +4,7 @@
   "description": "Yala-Maha Assist · Hydrological Monitoring, Farmer Registration & Agricultural Early Warning System",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "nodemon server.js",
     "dev": "node server.js",
     "test": "node test/test-suite.js"
   },
@@ -17,5 +17,11 @@
     "schematic-maps"
   ],
   "author": "Yala-Maha Assist Team",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^1.14.10"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  }
 }
