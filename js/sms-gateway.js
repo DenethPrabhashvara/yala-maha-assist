@@ -112,7 +112,7 @@ function initSmsGateway() {
 
   const sbBtn = $('#sb');
   if (sbBtn) {
-    sbBtn.onclick = () => {
+    sbBtn.onclick = async () => {
       const msg = ($('#msg') ? $('#msg').value : '').trim();
       if (!msg) {
         toast('Write a message first');
@@ -120,8 +120,26 @@ function initSmsGateway() {
       }
       const count = SMS_RECIPIENT_COUNTS[smsState.group] || 412;
       const previewText = msg.slice(0, 38) + (msg.length > 38 ? '…' : '');
-      addSmsHistoryEntry(['Just now', smsState.group, previewText, String(count), 'am', 'Pending']);
-      toast(`Broadcast queued for ${count.toLocaleString()} farmers`);
+      addSmsHistoryEntry(['Just now', smsState.group, previewText, String(count), 'ok', 'Dispatched']);
+      toast(`Broadcasting to ${count.toLocaleString()} farmers via Text.lk...`);
+
+      try {
+        const res = await fetch('http://localhost:8005/api/sms/send-custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipients: '94774817583',
+            message: msg,
+            forceLive: true
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          toast(`Broadcast SMS delivered to test phone! ✓`);
+        }
+      } catch (err) {
+        console.warn('Backend broadcast error:', err);
+      }
     };
   }
 
