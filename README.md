@@ -1,80 +1,87 @@
 # Yala-Maha Assist
-**Advanced Hydrological Monitoring & Agricultural Early Warning System for Mahaweli B Zone, Sri Lanka**
+**Advanced Hydrological Monitoring, Farmer Portal & Agricultural Early Warning System for Mahaweli B Zone, Sri Lanka**
 
 ## Overview
-Yala-Maha Assist is a comprehensive, modular web application designed for hydrological monitoring, farmer registration, and agricultural early warning systems in Sri Lanka's Mahaweli B Zone (Palugaswewa / Kudawewa system). The system combines real-time river monitoring, schematic farm coverage mapping, multilingual SMS dispatch, and a farmer self-service portal into a unified platform.
+Yala-Maha Assist is a comprehensive, modular web application designed for hydrological monitoring, farmer registration, and agricultural early warning systems in Sri Lanka's Mahaweli B Zone (Palugaswewa / Kudawewa system). The platform integrates real-time river monitoring, schematic GIS farm coverage mapping, multilingual Text.lk SMS dispatch, and a modern, mobile-responsive farmer self-service portal.
 
 **Version:** 1.0  
-**Primary Focus:** Farmland management, water resource management, agricultural sustainability  
-**Technologies:** Node.js, PostgreSQL, Express.js, Vanilla JavaScript, SVG, HTML5, CSS3  
-**Target Users:** Irrigation Officers, Agricultural Extension Officers, Farmers, Government Agencies
+**Primary Focus:** Farmland management, water resource optimization, agricultural sustainability, disaster mitigation  
+**Technologies:** Node.js, Express.js, PostgreSQL, Vanilla JavaScript (ES6+), SVG, HTML5, CSS3, Text.lk SMS Gateway  
+**Target Users:** Irrigation Officers, Agrarian Extension Officers, Registered Farmers, Government Agencies  
 
 ---
 
 ## Table of Contents
 - [Project Structure](#project-structure)
 - [Key Features](#key-features)
+- [SMS Gateway Integration (Text.lk)](#sms-gateway-integration-textlk)
 - [Technical Architecture](#technical-architecture)
 - [Setup & Installation](#setup--installation)
 - [API Endpoints](#api-endpoints)
 - [Database Schema](#database-schema)
-- [Testing](#testing)
-- [Configuration](#configuration)
+- [Configuration & Environment Variables](#configuration--environment-variables)
+- [Testing & CLI Tools](#testing--cli-tools)
 - [Deployment](#deployment)
-- [Contributing](#contributing)
+- [Acknowledgments](#acknowledgments)
 
 ---
 
 ## Project Structure
 ```
 yala-maha-assist/
-├── API/                       # REST API server with PostgreSQL integration
-│   ├── app.js                 # Express app configuration
-│   ├── server.js              # API server entry point
-│   ├── config/                # Database configuration
-│   │   └── db.js              # PostgreSQL connection pool
-│   ├── middleware/            # Custom middleware
-│   │   └── errorHandles.js    # Error handling middleware
-│   ├── models/                # Database models and schema
-│   │   ├── mahaweliModel.js   # Tank data model
-│   │   └── schema.sql         # Database schema definition 
-│   ├── routes/                # API route definitions
-│   │   └── apiroutes.js       # REST API endpoints for Tanks/Resoviours
-│   └── package.json           # API dependencies
-├── Controllers/               # HTML page controllers
-│   └── controller.js          # Serves HTML pages for various sections
-├── Tank-Reserviour/           # Data extraction utilities
-│   ├── get-mahaweli-tank-data.py  # Extract data from Mahaweli Public PDFs
-│   ├── cropcalender.pdf       # crop calendar
-│   ├── daily_download_pdfs.py     # Automated PDF downloader
-│   └── tank-dat.pdf           # tank data PDF
-├── public/                    # Static assets served by main server
-│   └── yala-maha-assist.html  # Main operations dashboard
-├── js/                        # Modular JavaScript components
-│   ├── app.js                 # Main application controller
-│   ├── translations.js        # Trilingual dictionary (EN/SI/TA)
-│   ├── icons.js               # Centralized SVG icons
-│   ├── schematic-map.js       # Vector map renderer & distance calculator
-│   ├── farmer-portal.js       # Farmer registration flow
-│   ├── dashboard.js           # Tank level charts & rainfall graphs
-│   ├── sms-gateway.js         # SMS broadcast composition & history
-│   ├── coverage-map.js        # Farm plots & coverage evaluation
-│   ├── river-monitoring.js    # Flood prediction & gauge monitoring
-│   ├── river-gauges.js        # River gauge data processing
-│   ├── river-forecast.js      # Weather forecast integration
-│   ├── river-risk.js          # Flood risk calculation
-│   └── river-page.js          # River monitoring page logic
+├── api/                             # REST API server & SMS services (Port 8005)
+│   ├── app.js                       # Express app configuration & middleware
+│   ├── server.js                    # API server startup & dotenv loader
+│   ├── config.env                   # Database, Text.lk, and alert configurations
+│   ├── test-sms.js                  # CLI utility for live & dry-run SMS testing
+│   ├── config/                      # Database configuration
+│   │   └── db.js                    # PostgreSQL connection pool
+│   ├── middleware/                  # Custom middleware
+│   │   ├── errorHandles.js          # Central error handling middleware
+│   │   └── inputValidators.js       # Joi request validation
+│   ├── models/                      # Database models and schema
+│   │   ├── mahaweliModel.js         # Mahaweli tank queries & controllers
+│   │   └── schema.sql               # PostgreSQL table definitions
+│   ├── routes/                      # Route controllers
+│   │   └── apiroutes.js             # Mahaweli tanks, alerts & SMS endpoints
+│   ├── services/                    # Business logic & gateway services
+│   │   ├── alertservice.js          # Threshold checking & automated flood warnings
+│   │   └── smsService.js            # Text.lk integration, OTP store & normalization
+│   └── package.json                 # API dependencies
+├── Controllers/                     # HTML page controllers
+│   └── controller.js                # Serves HTML views
+├── Tank-Reserviour/                 # Data extraction utilities
+│   ├── get-mahaweli-tank-data.py    # Extract data from Mahaweli Authority PDFs
+│   ├── cropcalender.pdf             # Crop calendar reference
+│   ├── daily_download_pdfs.py       # Automated PDF downloader
+│   └── tank-dat.pdf                 # Tank data reference
+├── public/                          # Static web assets served by main web server
+│   ├── farmer-portal.html           # Standalone mobile-responsive Farmer Portal
+│   ├── yala-maha-assist.html        # Main operations management dashboard
+│   ├── css/style.css                # Central design system stylesheet
+│   └── js/                          # Client-side modules (mirrored for web serving)
+├── js/                              # Modular frontend components
+│   ├── app.js                       # Main application shell & tab switcher
+│   ├── farmer-portal.js             # Farmer Portal UI, SMS OTP & 4-step registration
+│   ├── sms-gateway.js               # SMS broadcast composer & audit history
+│   ├── dashboard.js                 # Tank level charts & rainfall visualizers
+│   ├── coverage-map.js              # Farm plots & signal coverage evaluation
+│   ├── schematic-map.js             # SVG schematic canal/tank map generator
+│   ├── river-monitoring.js          # Flood prediction & gauge monitoring
+│   ├── river-gauges.js              # River gauge data processor
+│   ├── river-forecast.js            # Open-Meteo weather integration
+│   ├── river-risk.js                # Multi-source flood risk calculator
+│   ├── translations.js              # Central trilingual dictionary (EN / SI / TA)
+│   └── icons.js                     # Centralized SVG icons
 ├── css/
-│   └── style.css              # Unified design system (tokens, components)
-├── test/                      # Automated test suite
-│   └── test-suite.js          # 29 comprehensive tests
-├── farmer-portal.html         # Mobile-first farmer registration portal
-├── yala-maha-assist.html      # Main operations interface
-├── farm-config.js             # Farm data, crop hierarchy, NIC validation
-├── river-config.js            # River monitoring configuration & thresholds
-├── server.js                  # Main HTTP server entry point
-├── package.json               # Project dependencies & scripts
-└── README.md                  # Original documentation
+│   └── style.css                    # Unified design tokens, components & responsive layout
+├── farmer-portal.html               # Clean, card-based Farmer Portal entry page
+├── yala-maha-assist.html            # Unified operations dashboard
+├── farm-config.js                   # Farm datasets, crop hierarchy & NIC validator
+├── river-config.js                  # River monitoring configurations & gauge thresholds
+├── server.js                        # Main HTTP web server entry point (Port 3007)
+├── package.json                     # Main web dependencies & scripts
+└── README.md                        # Project documentation
 ```
 
 ---
@@ -82,319 +89,225 @@ yala-maha-assist/
 ## Key Features
 
 ### 🌊 Real-Time River Monitoring & Flood Prediction
-- **Live API Integration:** Connects to Open-Meteo Weather API for real-time rain data
-- **Multi-Source Data Fusion:** Combines Irrigation Department gauge readings with weather forecasts
-- **Predictive Analytics:** 7-day forecast with peak overflow timing and magnitude
-- **Automated Alert System:** Trilingual SMS dispatch (English/Sinhala/Tamil) when flood thresholds exceeded
-- **Officer Approval Workflow:** Configurable auto-send vs. officer approval for alerts
+- **Live Weather API:** Integrates with Open-Meteo for 7-day precipitation forecasts.
+- **Multi-Source Gauges:** Merges Irrigation Department gauge readings with catchment rainfall data.
+- **Predictive Risk Modeling:** Calculates flood overflow timing and risk level (Safe, Watch, Warning, Critical).
+- **Automated Alert Dispatch:** Trilingual SMS notifications (English, Sinhala, Tamil) when storage thresholds exceed safe limits.
 
-### 🗺️ Interactive Schematic Farm Coverage Map
-- **Vector-Based SVG Map:** Interactive schematic of Mahaweli B Zone irrigation infrastructure
-- **Dual-Axis Evaluation:** Simultaneous water supply adequacy and mobile/SMS signal strength assessment
-- **Dynamic Filtering:** By village, crop type, coverage level (Good/Low/Very Low)
-- **Vulnerability Identification:** Highlights farms requiring officer intervention (weak signal, low water)
-- **Click-to-Reveal:** Farm details popup showing farmer name, crop, acreage, and coverage metrics
+### 📱 Integrated SMS Gateway (Text.lk)
+- **Direct Carrier Delivery:** Integrates directly with Sri Lankan telecom providers (Dialog, Mobitel, Airtel, Hutch) via Text.lk API v3.
+- **Phone Number Normalization:** Automatically standardizes local inputs (`07XXXXXXXX` or `+94...`) into international format `947XXXXXXXX`.
+- **Live OTP Verification:** Dispatches real 6-digit SMS OTP codes with a 5-minute validity window for farmer login.
+- **Registration Confirmations:** Automatically delivers confirmation SMS with assigned Farm ID upon registration.
+- **Broadcast Composer:** Trilingual templates, GSM/Unicode segment counter, and live recipient broadcasting.
+- **Dry-Run Safe Mode:** Easily toggle between simulated and live SMS dispatch via environment variables.
 
-### 👨‍🌾 Farmer Self-Service Portal
-- **Mobile-First Design:** Optimized for low-bandwidth mobile access in rural areas
-- **Trilingual Interface:** Seamless switching between English, Sinhala, and Tamil
-- **4-Step Registration:**
-  1. Personal Information & NIC validation
-  2. Farm location & village selection
-  3. Crop selection & acreage specification
-  4. Schematic map pin placement & consent
-- **Privacy Protection:** NIC and phone numbers masked in all displays
-- **Self-Service Updates:** Farmers can modify their information post-registration
+### 👨‍🌾 Clean, Redesigned Farmer Portal
+- **Mobile-First Card Layout:** Clean, accessible card interface with trilingual switcher (**English / සිංහල / தமிழ்**).
+- **Instant Agrarian Insights:** Landing view directly displays current tank water levels, next water release date/time, and 3-day local rainfall.
+- **Guided 4-Step Registration:**
+  1. **Farmer Identity:** Full name, mobile verification, and NIC validation with privacy masking.
+  2. **Crop Details:** Dynamic cascade for categories (Paddy, Vegetables, Fruits, OFC), varieties, acreage, and expected yield.
+  3. **Interactive Schematic Map:** Drag-and-drop pin on SVG canal/tank map with automatic landmark snapping and distance calculation.
+  4. **Review & Consent:** Summary review card with instant SMS confirmation upon submission.
+- **Canal Maintenance Reports:** Rapid reporting tool for canal blockages, gate damage, and water leaks.
 
-### 📱 Comprehensive SMS Gateway
-- **Trilingual Broadcast Composer:** Template system with language-specific character limits
-- **Segment Calculator:** Automatic GSM/Unicode segment counting for cost optimization
-- **Delivery Tracking:** Real-time status monitoring (sent, delivered, pending, failed)
-- **Inbound Query Handling:** Automatic replies for common farmer inquiries (STATUS, NEXT RELEASE)
-- **Broadcast History:** Audit trail of all SMS campaigns with reach and delivery metrics
+### 🗺️ Schematic GIS Farm Coverage Map
+- **Vector-Based SVG Infrastructure:** Interactive schematic of the Mahaweli B Zone water distribution network.
+- **Dual-Axis Evaluation:** Simultaneous evaluation of water supply adequacy and cellular/SMS signal reception.
+- **Vulnerability Highlighting:** Instantly pinpoints downstream farms facing water scarcity or poor communication reception.
 
-### 📊 Tank & Reservoir Dashboard
-- **Real-Time Water Levels:** Current storage percentage with visual fill indicators
-- **Historical Trends:** 30-day water level history chart
-- **Rainfall Forecast:** 7-day precipitation prediction from Open-Meteo
-- **Release Scheduling:** Next scheduled water release time display
-- **Farmer Contact Metrics:**Details about reachable registered farmers via SMS
+---
 
-### 🔐 Secure & Modular Architecture
-- **Zero External Dependencies:** Core functionality works offline with sample data
-- **Clean Separation of Concerns:** MVC-inspired structure with distinct layers
-- **Automated Testing:** 29-test suite validating all major components
-- **Database Handling:** PostgreSQL connection pooling with proper error handling
+## SMS Gateway Integration (Text.lk)
+
+### Architecture Flow
+
+```
+[Farmer Portal / Dashboard] 
+           │ (HTTP POST)
+           ▼
+[Express API Server (Port 8005)]
+           │ (services/smsService.js)
+           ▼
+[Text.lk Cloud API (https://app.text.lk/api/v3/sms/send)]
+           │ (Bearer Token Auth)
+           ▼
+[Sri Lankan Telecom Operators (Dialog / Mobitel / Airtel / Hutch)]
+           │ (GSM Cellular Dispatch)
+           ▼
+[Farmer's Mobile Phone Inbox]
+```
+
+### Supported SMS Workflows
+1. **OTP Verification:** `POST /api/sms/send-otp` & `POST /api/sms/verify-otp`
+2. **Registration Confirmation:** `POST /api/sms/confirm-registration`
+3. **Threshold Flood Alerts:** `POST /api/alerts/check` (Dispatches alerts when tanks reach $\ge 90\%$ capacity)
+4. **Custom & Broadcast Messages:** `POST /api/sms/send-custom`
 
 ---
 
 ## Technical Architecture
 
 ### Frontend (Client-Side)
-- **Vanilla JavaScript ES6:** No frameworks for maximum compatibility and performance
-- **Modular Component System:** Each feature encapsulated in its own JS module
-- **SVG-Based Visualizations:** All charts, maps, and icons use scalable vector graphics
-- **CSS Design System:** Unified tokens for colors, spacing, typography, and components
-- **Progressive Enhancement:** Basic functionality works without JavaScript
+- **Vanilla JavaScript ES6+:** Zero frontend framework dependencies for ultra-fast load times on rural mobile connections.
+- **Scalable Vector Graphics (SVG):** Dynamic water ring gauges, interactive GIS maps, and crisp icons.
+- **Trilingual Dictionary:** Centralized dictionary in `js/translations.js` supporting English, Sinhala, and Tamil.
 
 ### Backend (Server-Side)
-- **Node.js Runtime:** JavaScript backend for code reuse and developer efficiency
-- **Express.js Framework:** Minimalist web framework for routing and middleware
-- **PostgreSQL Database:** Relational database for structured data storage
-- **RESTful API:** Standard HTTP verbs for CRUD operations on resources
-- **Environment-Based Configuration:** Separate configs for development/staging/production
-
-### Data Flow
-1. **Data Ingestion:** 
-   - River data from Open-Meteo API & Irrigation Department gauges
-   - Farm data from manual registration or batch imports
-   - Tank/reservoir data from PDF extraction utilities
-2. **Processing & Storage:**
-   - Data validation and normalization
-   - PostgreSQL persistence for historical analysis
-   - Real-time caching for dashboard updates
-3. **Presentation Layer:**
-   - Reactive UI updates via DOM manipulation
-   - WebSocket-style polling for real-time data (simplified with setInterval)
-   - SVG redraws for changing data visualizations
+- **Node.js & Express.js:** Fast, asynchronous REST API running on Port `8005`.
+- **PostgreSQL Database:** Connection pooled via `pg` for tank monitoring, storage history, and agrarian records.
+- **Environment Isolation:** Configured via `config.env` with dry-run support to prevent accidental credit consumption.
 
 ---
 
 ## Setup & Installation
 
 ### Prerequisites
-- Node.js >= 14.x
-- npm >= 6.x
-- PostgreSQL >= 12.x
-- Git (for version control)
+- **Node.js** >= 18.x
+- **PostgreSQL** >= 12.x
+- **Text.lk Account** (for live SMS dispatch)
 
-### Quick Start
-
+### 1. Clone & Install
 ```bash
-# 1. Clone the repository
 git clone https://github.com/your-org/yala-maha-assist.git
 cd yala-maha-assist
 
-# 2. Install dependencies
+# Install main web server dependencies
 npm install
 
-# 3. Set up environment variables
-cp .env.example .env
-# Edit .env with your database credentials and API keys
-
-
-# 5. Start the application
-npm start               # Main server (http://localhost:3000)
-# OR
-npm run api             # API server only (http://localhost:8005)
-# OR
-npm run dev             # Development mode with nodemon
+# Install API server dependencies
+cd api
+npm install
+cd ..
 ```
 
-### Alternative Start Methods
-```bash
-# Direct Node execution
-node server.js          # Main server on port 3000
-node API/server.js      # API server on port 8005
+### 2. Configure Environment Variables
+Edit `api/config.env`:
+```env
+APIDBUSERN=postgres
+APIDBPASSWORD=your_postgres_password
+APIDBHOST=localhost
+APIDATABASE=yala-maha-api
+APIDBPORT=5432
 
-# With nodemon for development
-npx nodemon server.js
-npx nodemon API/server.js
+# Text.lk SMS Gateway Credentials
+TEXTLK_API_TOKEN=your_textlk_api_token
+TEXTLK_SENDER_ID=TextLKDemo
+SMS_DRY_RUN=false
+
+# Alert System Configuration
+ALERT_THRESHOLD=90
+ALERT_RECIPIENTS=94774817583
+```
+
+### 3. Initialize Database
+Run `api/models/schema.sql` against your PostgreSQL database:
+```bash
+psql -U postgres -d yala-maha-api -f api/models/schema.sql
+```
+
+### 4. Run the Servers
+
+#### Start the API Server (Port 8005):
+```bash
+cd api
+node server.js
+# Or with auto-reload:
+npm run api
+```
+
+#### Start the Main Web Server (Port 3007):
+```bash
+node server.js
 ```
 
 ---
 
 ## API Endpoints
 
-### Health & Status
-```
-GET /api/health
-Returns: { status: "healthy", timestamp: "...", uptime: "..." }
+### 🌊 Mahaweli Tanks & Reservoirs
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/mahaweli` | Retrieve live water levels, capacity, and rainfall for all tanks |
+| `GET` | `/api/mahaweli/:id` | Retrieve single tank details by ID |
+
+### 📲 SMS Gateway & OTP Services
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/sms/send-otp` | Generate & dispatch a 6-digit verification code to farmer's phone |
+| `POST` | `/api/sms/verify-otp` | Verify the 6-digit OTP code entered by the farmer |
+| `POST` | `/api/sms/confirm-registration`| Send official registration confirmation SMS with Farm ID |
+| `POST` | `/api/sms/send-custom` | Send custom SMS text to one or multiple recipient numbers |
+
+### ⚠️ Early Warning Flood Alerts
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/alerts/preview` | Safe dry-run preview of pending high water level alerts (zero cost) |
+| `POST` | `/api/alerts/check` | Evaluates tank threshold $\ge 90\%$ and dispatches real SMS alerts |
+
+---
+
+## Testing & CLI Tools
+
+### Terminal SMS Gateway Test Tool
+A dedicated CLI tool is provided to test SMS dispatch directly from PowerShell or Bash:
+
+```bash
+cd api
+
+# 1. Safe dry-run simulation (does not consume SMS credits):
+node test-sms.js 0774817583
+
+# 2. Live SMS dispatch directly to your phone:
+node test-sms.js 0774817583 --live
+
+# 3. Custom message test:
+node test-sms.js 0774817583 "Hello from Yala-Maha Assist" --live
 ```
 
-### Farm Management
-```
-GET /api/farms
-Returns: List of all registered farms with pagination
-Query: ?village=Palugaswewa&crop=paddy&limit=10&offset=0
+### Testing API Endpoints via PowerShell
+```powershell
+# Test live alert check:
+Invoke-RestMethod -Method Post http://localhost:8005/api/alerts/check
 
-GET /api/farms/:id
-Returns: Single farm details by ID
-
-POST /api/farms
-Body: {
-  "farmerName": "string",
-  "nic": "string", 
-  "mobile": "string",
-  "village": "string",
-  "crops": [{ "category": "...", "crop": "...", "species": "...", "acres": number }],
-  "totalAcres": number
-}
-Returns: Created farm object with assigned ID
+# Test OTP generation:
+Invoke-RestMethod -Method Post http://localhost:8005/api/sms/send-otp -ContentType "application/json" -Body '{"phone":"0774817583"}'
 ```
 
-### River Monitoring
-```
-GET /api/river
-Returns: Current river status including level, discharge, flood risk, and forecast
-```
-
+---
 
 ## Database Schema
 
-### mahawelitanks Table
-Stores real-time reservoir and tank monitoring data:
-
+### `mahawelitanks` Table
 | Column | Type | Description |
-|--------|------|-------------|
-| id | SERIAL PRIMARY KEY | Auto-incrementing unique identifier |
-| tank_name | VARCHAR(50) UNIQUE | Name of the reservoir/tank |
-| tot_capacity_mcm | DECIMAL(6,3) | Total capacity in million cubic meters |
-| water_level_msl | DECIMAL(7,3) | Water level in meters above sea level |
-| storage_mcm | DECIMAL(6,3) | Current storage volume in MCM |
-| storage_percentage | DECIMAL(6,2) | Storage as percentage of capacity |
-| covered_land_acres | INT | Irrigated land area in acres |
-| rainfall_last_24h_mm | DECIMAL(6,3) | Rainfall in last 24 hours (mm) |
-| createdAt | TIMESTAMP | Record creation timestamp |
-
-*Schema definition located at: `API/models/schema.sql`*
-
----
-
-## Testing
-
-### Automated Test Suite
-The project includes a comprehensive test suite validating:
-- Domain configurations (farm & river settings)
-- NIC validation & privacy masking algorithms
-- Translation completeness (English/Sinhala/Tamil)
-- File existence for all static assets
-- HTTP server responsiveness
-- REST API endpoint functionality
-- Database connectivity and queries
-
-### Running Tests
-```bash
-# Run all tests
-npm test
-
-# Run tests with verbose output
-node test/test-suite.js
-```
-
-### Test Coverage
-- **Configuration Tests:** 4 tests
-- **Security/Privacy Tests:** 5 tests  
-- **File Existence Tests:** 9 tests
-- **HTTP/API Tests:** 11 tests
-- **Total:** 29 automated tests
-
----
-
-## Configuration
-
-### Environment Variables
-Create a `.env` file in the root directory:
-
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=yala-maha
-DB_USER=postgres
-DB_PASSWORD=your_password
-
-# API Configuration (Optional)
-OPEN_METEO_API_KEY=your_api_key_here
-IRRIGATION_DEPT_API_KEY=your_api_key_here
-
-# Server Ports
-MAIN_SERVER_PORT=3000
-API_SERVER_PORT=8005
-
-# Feature Flags
-ENABLE_SMS_GATEWAY=true
-ENABLE_AUTO_ALERTS=true
-```
-
-### Configuration Files
-- **API/config/db.js:** Database connection parameters
-
+| :--- | :--- | :--- |
+| `id` | `SERIAL PRIMARY KEY` | Auto-incrementing unique identifier |
+| `tank_name` | `VARCHAR(50) UNIQUE` | Reservoir name (e.g., *Ridiyagama*, *Rajanganaya*) |
+| `tot_capacity_mcm` | `DECIMAL(6,3)` | Total capacity in million cubic meters (MCM) |
+| `water_level_msl` | `DECIMAL(7,3)` | Current water elevation above sea level |
+| `storage_mcm` | `DECIMAL(6,3)` | Current water volume in MCM |
+| `storage_percentage`| `DECIMAL(6,2)` | Current storage percentage ($\%$) |
+| `covered_land_acres`| `INT` | Irrigated agricultural land (acres) |
+| `rainfall_last_24h_mm`| `DECIMAL(6,3)`| 24-hour catchment rainfall in millimeters |
+| `last_update` | `TIMESTAMP` | Timestamp of latest hydrological reading |
 
 ---
 
 ## Deployment
 
-### Development Deployment
-1. Follow the Setup & Installation steps above
-2. Use `npm run dev` for automatic restart on file changes & Use `npm run api` to Start the api
-3. Access at:
-   - Main Interface: http://localhost:3000
-   - API Documentation: http://localhost:8005/api/
-    -Mahaweli Tanks/Resrviours api http://localhost:8005/api/mahaweli
-
-   - Farmer Portal: http://localhost:3000/portal
-
-### Production Deployment Considerations
-
-
----
-
-## Project Dependencies
-
-### Production Dependencies
-- **express@^5.3.0** - Web framework
-- **cors@^2.8.6** - Cross-origin resource sharing (API)
-- **dotenv@^18.0.7** - Environment variable loading
-- **joi@^18.2.9** - Schema validation (API)
-- **pg@^8.23.1** - PostgreSQL client
-
-### Development Dependencies
-- **nodemon@^1.14.10** - Development server auto-restart
-- **pdfplumber** - PDF text/table extraction (Python utility)
-
----
-
-## Data Sources & Integration
-
-### External APIs
-2. **Open-Meteo Weather API:** 7-day rainfall forecasts for catchment areas
-3. **Irrigation Department Gauges:** Real-time river level measurements (JSON endpoint)
-
-### File-Based Data Sources
-- **PDF Extraction:** Tank/reservoir Mahaweli Autority data from PDF reports using `get-mahaweli-tank-data.py`
-- **Reservoir data:** from  Department of Irrigation Pubished Documents
-
----
-
-### Testing Guidelines
-- Write tests for new features before implementation
-- Test edge cases and error conditions
-- Mock external API calls in tests
-- Keep tests focused and independent
-
----
-
+### Accessing the Web Interfaces
+- **Farmer Portal (Mobile Interface):** `http://localhost:3007/farmer-portal.html` or direct file view `farmer-portal.html`
+- **Operations Dashboard:** `http://localhost:3007/`
+- **Backend API Base:** `http://localhost:8005/api/`
 
 ---
 
 ## Acknowledgments
-
-- **Sri Lanka Mahaweli Authority:** For providing irrigation infrastructure data
-- **Department of Irrigation:** For real-time gauge station data
-- **Open-Meteo:** For free access to rain and weather APIs
-- **Contributors:** All developers, testers, and domain experts who contributed to this project
-
----
-
-## Contact & Support
-
-For questions, issues, or contributions:
-- **Issues:** Use the GitHub Issues tab
-- **Documentation:** Refer to this README and inline code comments
-- **Configuration:** Check the `.env.example` and config files for guidance
-
-**Yala-Maha Assist · Empowering Sri Lankan Agriculture Through Technology**
+- **Sri Lanka Mahaweli Authority:** For irrigation infrastructure and catchment data.
+- **Department of Irrigation, Sri Lanka:** For river gauge monitoring and hydrological records.
+- **Open-Meteo:** For weather and precipitation forecast APIs.
+- **Text.lk:** For Sri Lankan mobile SMS gateway infrastructure.
 
 ---
-*Last Updated: October 2026*
+*Yala-Maha Assist · Empowering Sri Lankan Agriculture Through Technology*
