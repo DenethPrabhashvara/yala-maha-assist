@@ -12,6 +12,7 @@ apirouter.route('/').get((req,res)=>{
 apirouter.route('/mahaweli').get(mahaweli.getAllTanks)
 apirouter.route('/mahaweli/:id').get(mahaweli.getTankbyId)
 apirouter.route('/reservoir').get(reservoir.getAllResvData)
+apirouter.route('/reservoir/:id').get(reservoir.getResById)
 
 
 module.exports = apirouter
