@@ -24,5 +24,11 @@ app.use('/api/', apiroute)
 //ERROR Handling Midleware
 app.use(errorHandle);
 
+app.all('/*splat', (req, res, next) => {
+  res.status(404).json({
+    status: 'error',
+    message: `Route ${req.originalUrl} not found`
+  });
+});
 
 module.exports = app
