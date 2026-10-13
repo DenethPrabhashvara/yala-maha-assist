@@ -15,6 +15,8 @@ apirouter.route('/').get((req, res) => {
 })
 
 apirouter.route('/mahaweli').get(mahaweli.getAllTanks)
+apirouter.route('/mahaweli/csv').get(mahaweli.getAllTanks)
+apirouter.route('/mahaweli.csv').get(mahaweli.getAllTanks)
 apirouter.route('/mahaweli/:id').get(mahaweli.getTankbyId)
 
 // Safe to hit as often as you like: shows what WOULD be sent, costs nothing

@@ -226,11 +226,63 @@ node server.js
 
 ## API Endpoints
 
-### 🌊 Mahaweli Tanks & Reservoirs
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/mahaweli` | Retrieve live water levels, capacity, and rainfall for all tanks |
-| `GET` | `/api/mahaweli/:id` | Retrieve single tank details by ID |
+### 🌊 Mahaweli Tanks & Reservoirs (Public CSV & Data API)
+
+The Mahaweli tanks API is publicly accessible with full CORS support (`Access-Control-Allow-Origin: *`), designed for direct integration with machine learning pipelines (e.g. Google Colab notebooks), GIS dashboards, spreadsheets, and frontend applications.
+
+| Method | Endpoint | Format | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/mahaweli` | **CSV** | **Public default endpoint** returning all tank water levels, capacity, and rainfall in CSV format |
+| `GET` | `/api/mahaweli?download=true` | **CSV File** | Prompts direct browser download of `mahaweli_tanks.csv` (`Content-Disposition: attachment`) |
+| `GET` | `/api/mahaweli/csv` | **CSV** | Dedicated route alias returning CSV format |
+| `GET` | `/api/mahaweli?format=json` | **JSON** | Alternative JSON format containing full dataset and metadata |
+| `GET` | `/api/mahaweli/:id` | **JSON** | Retrieve single tank record by ID (e.g. `/api/mahaweli/1`) |
+| `GET` | `/api/mahaweli/:id?format=csv` | **CSV** | Retrieve single tank record in CSV format (also supports `/api/mahaweli/:id.csv`) |
+
+#### Quick Examples:
+
+##### 1. Python / Pandas (Google Colab, Jupyter & ML Pipelines)
+```python
+import pandas as pd
+
+# Load directly into DataFrame from public endpoint
+url = "http://localhost:8005/api/mahaweli"
+df = pd.read_csv(url)
+
+print(df.head())
+print(df.info())
+```
+
+##### 2. cURL / Terminal
+```bash
+# View CSV in terminal
+curl -s http://localhost:8005/api/mahaweli
+
+# Download as a file
+curl -o mahaweli_tanks.csv http://localhost:8005/api/mahaweli?download=true
+```
+
+##### 3. PowerShell
+```powershell
+# View CSV raw text
+Invoke-RestMethod -Uri "http://localhost:8005/api/mahaweli"
+
+# Save directly to a local CSV file
+Invoke-WebRequest -Uri "http://localhost:8005/api/mahaweli?download=true" -OutFile "mahaweli_tanks.csv"
+```
+
+##### 4. Google Sheets
+```text
+=IMPORTDATA("http://localhost:8005/api/mahaweli")
+```
+
+##### 5. CSV Output Preview
+```csv
+id,tank_name,tot_capacity_mcm,water_level_msl,storage_mcm,storage_percentage,covered_land_acres,rainfall_last_24h_mm,last_update
+1,Ridiyagama,32.100,20.060,33.770,105.00,16561,,2026-10-07T18:30:00.000Z
+2,Mapakada,9.510,103.540,5.520,58.00,1507,21.200,2026-10-08T18:30:00.000Z
+3,Dambarawa,15.940,100.620,11.400,71.00,1507,,2026-10-08T18:30:00.000Z
+```
 
 ### 📲 SMS Gateway & OTP Services
 | Method | Endpoint | Description |
@@ -268,10 +320,13 @@ node test-sms.js 0774817583 "Hello from Yala-Maha Assist" --live
 
 ### Testing API Endpoints via PowerShell
 ```powershell
-# Test live alert check:
+# 1. Test public Mahaweli tanks CSV endpoint:
+Invoke-RestMethod -Uri http://localhost:8005/api/mahaweli
+
+# 2. Test live alert check:
 Invoke-RestMethod -Method Post http://localhost:8005/api/alerts/check
 
-# Test OTP generation:
+# 3. Test OTP generation:
 Invoke-RestMethod -Method Post http://localhost:8005/api/sms/send-otp -ContentType "application/json" -Body '{"phone":"0774817583"}'
 ```
 
