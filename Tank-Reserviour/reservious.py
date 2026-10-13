@@ -13,10 +13,10 @@ import psycopg2
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_NAME = os.getenv("DB_NAME", "postgres")
-DB_USER = os.getenv("DB_USER", "postgres")
+DB_USER = os.getenv("DB_USER", "yala-maha-api")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 
-OUTPUT_FILE = "reservoirs_data.json"
+OUTPUT_FILE = "reservoirs_data.json"  #For Debug
 
 DASHBOARDS = {
     "medium": "9b114013dce14faca2c6bf8de3de6d3f",
