@@ -311,3 +311,6 @@ Invoke-RestMethod -Method Post http://localhost:8005/api/sms/send-otp -ContentTy
 
 ---
 *Yala-Maha Assist · Empowering Sri Lankan Agriculture Through Technology*
+
+#### important
+for to train ml model on google colab notebook i put  the current github pages appi endpoint url for it when hosting it on another platform please mention it again

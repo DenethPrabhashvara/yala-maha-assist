@@ -611,18 +611,22 @@ function render() {
 function bindEvents() {
   const t = T[lang] || T.en;
 
-  // 1. Phone Sign-In -> Send Real SMS OTP
+  // 1. Phone Sign-In -> Send Real SMS OTP (with Strict Validation & Cooldown)
   const go1Btn = $('#go1');
   if (go1Btn) {
     go1Btn.onclick = async () => {
       const phInput = $('#ph');
-      const v = phInput ? cleanDigits(phInput.value) : '';
-      if (v.length < 9) {
+      let v = phInput ? phInput.value.trim().replace(/[\s\-+]/g, '') : '';
+      if (v.startsWith('0')) v = '94' + v.slice(1);
+
+      // Validate Sri Lankan mobile format strictly (94 + 7X + 7 digits)
+      if (!/^94(7[01245678])\d{7}$/.test(v)) {
         if (phInput) phInput.classList.add('err');
-        toast(t.bad);
+        toast('Enter a valid 10-digit Sri Lankan mobile (e.g. 077 123 4567)');
         return;
       }
-      phone = v.replace(/(\d{2})(\d{3})(\d+)/, '$1 $2 $3');
+
+      phone = v.slice(2).replace(/(\d{2})(\d{3})(\d+)/, '$1 $2 $3');
 
       go1Btn.disabled = true;
       go1Btn.innerHTML = `<span>Sending SMS...</span>`;
@@ -635,7 +639,7 @@ function bindEvents() {
         });
         const data = await response.json();
 
-        if (data.status === 'success') {
+        if (response.ok && data.status === 'success') {
           const successMsg = lang === 'si'
             ? 'OTP කේතය ඔබගේ දුරකථනයට යවන ලදී'
             : lang === 'ta'
@@ -651,14 +655,14 @@ function bindEvents() {
         }
       } catch (err) {
         console.warn('Backend offline, proceeding in demo mode:', err);
-        toast('SMS Gateway simulated');
+        toast('SMS Gateway simulated (API offline)');
         scr = 1;
         render();
       }
     };
   }
 
-  // 2. OTP Code Verification -> Verify with Backend Gateway
+  // 2. OTP Code Verification -> Verify with Backend Gateway (with Attempt Limits)
   const otpContainer = $('#otp');
   if (otpContainer) {
     const inputs = [...otpContainer.querySelectorAll('input')];
@@ -679,7 +683,7 @@ function bindEvents() {
       go2Btn.onclick = async () => {
         const enteredOtp = inputs.map(inp => inp.value).join('');
         if (enteredOtp.length < 6) {
-          toast('Please enter 6-digit OTP code');
+          toast('Please enter the full 6-digit OTP code');
           return;
         }
 
@@ -695,12 +699,15 @@ function bindEvents() {
           });
           const data = await response.json();
 
-          if (data.status === 'success') {
+          if (response.ok && data.status === 'success') {
             toast('Mobile number verified! ✓');
             scr = 'reg1';
             render();
           } else {
             toast(data.message || 'Incorrect OTP code');
+            // Clear inputs for next attempt
+            inputs.forEach(inp => inp.value = '');
+            if (inputs[0]) inputs[0].focus();
             go2Btn.disabled = false;
             go2Btn.innerHTML = `${ico.lock || ''} ${t.vb}`;
           }

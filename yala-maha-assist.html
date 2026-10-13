@@ -470,8 +470,13 @@
   </div>
   <div class="cols s-cols">
    <div class="card"><div class="row"><div class="ct" style="margin:0">Compose SMS Broadcast</div><span class="pill am">Draft</span></div>
-    <span class="fl">1 · Target group</span><div class="seg2" id="grp"><button data-g="Upstream">Upstream</button><button data-g="Downstream" class="on">Downstream</button><button data-g="All">All</button></div>
-    <div class="rec"><div><b><span id="rc" style="font-size:13px;color:var(--pri);font-weight:700">412</span> farmers will receive this</b><span>Kudawewa area · registered phone nodes</span></div><span class="pill ok" id="rb">412 recipients</span></div>
+    <span class="fl">1 · Target group</span><div class="seg2" id="grp"><button data-g="Upstream">Upstream</button><button data-g="Downstream" class="on">Downstream</button><button data-g="All">All</button><button data-g="Custom">Custom</button></div>
+    <div id="custom-phone-wrap" style="display:none;margin-top:10px;background:var(--soft);border:1px solid var(--line2);border-radius:10px;padding:10px">
+      <label style="margin:0 0 4px;font-size:12px;font-weight:700;color:var(--ink)">Custom Recipient Number(s):</label>
+      <input class="f" id="custom-phone-input" placeholder="e.g. 0774817583, 0712345678" style="padding:10px 12px;font-size:13px;background:#fff">
+      <div class="small" style="color:var(--mut);margin-top:4px">Separate multiple phone numbers with commas</div>
+    </div>
+    <div class="rec" id="rec-info-wrap"><div><b><span id="rc" style="font-size:13px;color:var(--pri);font-weight:700">412</span> farmers will receive this</b><span>Kudawewa area · registered phone nodes</span></div><span class="pill ok" id="rb">412 recipients</span></div>
     <span class="fl">2 · Language</span><div class="seg2" id="lg"><button data-l="si">Sinhala</button><button data-l="ta">தமிழ்</button><button data-l="en" class="on">English</button></div>
     <div class="small" style="margin-top:8px">English: 160 characters per SMS · Sinhala / Tamil (Unicode): 70 per SMS</div>
     <span class="fl">3 · Quick template</span><div class="tp" id="tp"></div>

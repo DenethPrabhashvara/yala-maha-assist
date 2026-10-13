@@ -1,28 +1,58 @@
-const express = require('express')
-const app =express()
-const cors = require('cors')
-const db = require('./config/db.js')
-const apiroute = require('./routes/apiroutes.js')
-const errorHandle =require('./middleware/errorHandles.js')
-//MIDDLEWARE
-app.use(express.json())
-app.use(cors())
+const express =require('express')
+const path = require('path')
+const app = express()
 
 
+app.use(express.static(path.join(dirname, 'public')));
 
-//Routess
-
-app.get('/', async (req,res)=>{
-    resul = await db.query('SELECT current_database()')
-    console.log(resul.rows[0].current_database)
-    res.end()
+app.get(['/river-config.js', '/farm-config.js', '/river-page.js', '/js/river-page.js'], (req, res, next) => {
+    res.sendFile(path.join(dirname, req.path.endsWith('/river-page.js') ? 'river-page.js' : req.path.slice(1)), err => {
+        if (err) next(err)
+    })
 })
 
-app.use('/api/', apiroute)
+app.get([
+    '/',
+    '/dashboard',
+    '/river',
+    '/map',
+    '/sms',
+    '/portal',
+    '/coverage-map',
+    '/sms-gateway',
+    '/farmer-portal'
+], (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'yala-maha-assist.html'))
+})
 
 
-//ERROR Handling Midleware
-app.use(errorHandle);
+const { Pool } = require('pg');
 
+
+const pool = new Pool({
+    user:"postgres",
+    password:"postgres",
+    host:"localhost",
+    database:"yala-maha-api",
+    port:5432
+})
+
+app.get('/mahaweli-data' , async (req,res)=>{
+    const result = await pool.query('SELECT * FROM mahawelitanks')
+    const headers = result.fields.map(field => field.name)
+    const csv = [
+        headers,
+        ...result.rows.map(row => headers.map(header => row[header]))
+    ].map(row => row.map(value => {
+        const cell = value == null
+            ? ''
+            : typeof value === 'object' && !(value instanceof Date)
+                ? JSON.stringify(value)
+                : String(value)
+        return "${cell.replace(/"/g, '""')}"
+    }).join(',')).join('\r\n')
+
+    res.type('text/csv').send(csv)
+})
 
 module.exports = app
