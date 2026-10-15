@@ -1,14 +1,6 @@
 const express = require('express')
 const mahaweli = require('../models/mahaweliModel.js')
 const reservoir = require('../models/reserviorModel.js')
-
-apirouter = express.Router()
-
-apirouter.route('/').get((req,res)=>{
-    res.status(200).end("Welcome to Our API")
-})
-
-
 const { runAlertCheck } = require('../services/alertservice.js')
 const {
   sendSms,
@@ -108,10 +100,10 @@ apirouter.route('/sms/send-custom').post(async (req, res, next) => {
 
 
 apirouter.route('/mahaweli').get(mahaweli.getAllTanks)
+apirouter.route('/mahaweli/csv').get(mahaweli.getAllTanks)
+apirouter.route('/mahaweli.csv').get(mahaweli.getAllTanks)
 apirouter.route('/mahaweli/:id').get(mahaweli.getTankbyId)
 apirouter.route('/reservoir').get(reservoir.getAllResvData)
 apirouter.route('/reservoir/:id').get(reservoir.getResById)
-
-
 
 module.exports = apirouter

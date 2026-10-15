@@ -65,8 +65,21 @@ function initSmsGateway() {
       if (!b) return;
       smsState.group = b.dataset.g;
       $$('#grp button').forEach(x => x.classList.toggle('on', x === b));
+      const customWrap = $('#custom-phone-wrap');
+      if (customWrap) {
+        customWrap.style.display = (smsState.group === 'Custom') ? 'block' : 'none';
+        if (smsState.group === 'Custom') {
+          const phInp = $('#custom-phone-input');
+          if (phInp && !phInp.value) phInp.value = '0774817583';
+        }
+      }
       updateSmsMetrics();
     };
+  }
+
+  const customPhoneInp = $('#custom-phone-input');
+  if (customPhoneInp) {
+    customPhoneInp.oninput = updateSmsMetrics;
   }
 
   // Bind language segmented buttons
@@ -112,16 +125,51 @@ function initSmsGateway() {
 
   const sbBtn = $('#sb');
   if (sbBtn) {
-    sbBtn.onclick = () => {
+    sbBtn.onclick = async () => {
       const msg = ($('#msg') ? $('#msg').value : '').trim();
       if (!msg) {
         toast('Write a message first');
         return;
       }
-      const count = SMS_RECIPIENT_COUNTS[smsState.group] || 412;
+
+      let recipientsToSend = '94774817583';
+      let count = SMS_RECIPIENT_COUNTS[smsState.group] || 412;
+
+      if (smsState.group === 'Custom') {
+        const customInput = ($('#custom-phone-input') ? $('#custom-phone-input').value : '').trim();
+        if (!customInput) {
+          toast('Enter at least one custom phone number');
+          if ($('#custom-phone-input')) $('#custom-phone-input').focus();
+          return;
+        }
+        recipientsToSend = customInput;
+        count = customInput.split(',').map(s => s.trim()).filter(Boolean).length;
+      }
+
       const previewText = msg.slice(0, 38) + (msg.length > 38 ? '…' : '');
-      addSmsHistoryEntry(['Just now', smsState.group, previewText, String(count), 'am', 'Pending']);
-      toast(`Broadcast queued for ${count.toLocaleString()} farmers`);
+      addSmsHistoryEntry(['Just now', smsState.group, previewText, String(count), 'ok', 'Dispatched']);
+      toast(`Sending SMS to ${count} recipient${count > 1 ? 's' : ''} via Text.lk...`);
+
+      try {
+        const res = await fetch('http://localhost:8005/api/sms/send-custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipients: recipientsToSend,
+            message: msg,
+            forceLive: true
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          toast(`SMS delivered successfully to custom number(s)! ✓`);
+        } else {
+          toast(data.message || 'Error delivering SMS');
+        }
+      } catch (err) {
+        console.warn('Backend broadcast error:', err);
+        toast('Backend offline');
+      }
     };
   }
 
@@ -137,7 +185,13 @@ function updateSmsMetrics() {
   const isUnicode = smsState.lang !== 'en';
   const lim = isUnicode ? 70 : 160;
   const sg = Math.max(1, Math.ceil(m.length / lim));
-  const n = SMS_RECIPIENT_COUNTS[smsState.group] || 412;
+
+  let n = SMS_RECIPIENT_COUNTS[smsState.group] || 412;
+  if (smsState.group === 'Custom') {
+    const customInp = $('#custom-phone-input');
+    const customCount = customInp ? customInp.value.split(',').map(s => s.trim()).filter(Boolean).length : 0;
+    n = Math.max(1, customCount);
+  }
 
   const cntEl = $('#cnt');
   if (cntEl) cntEl.textContent = `${m.length} / ${lim} characters`;
@@ -149,7 +203,7 @@ function updateSmsMetrics() {
   if ($('#s2')) $('#s2').textContent = sg;
   if ($('#s3')) $('#s3').textContent = (n * sg).toLocaleString();
   if ($('#rc')) $('#rc').textContent = n.toLocaleString();
-  if ($('#rb')) $('#rb').textContent = `${n.toLocaleString()} recipients`;
+  if ($('#rb')) $('#rb').textContent = `${n.toLocaleString()} recipient${n > 1 ? 's' : ''}`;
 }
 
 function applySmsTemplate() {
