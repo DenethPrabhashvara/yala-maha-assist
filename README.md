@@ -52,6 +52,7 @@ yala-maha-assist/
 │   └── controller.js                # Serves HTML views
 ├── Tank-Reserviour/                 # Data extraction utilities
 │   ├── get-mahaweli-tank-data.py    # Extract data from Mahaweli Authority PDFs
+│   ├── get-realtime-river-levels.py # Fetch recent river-gauge readings from ArcGIS
 │   ├── cropcalender.pdf             # Crop calendar reference
 │   ├── daily_download_pdfs.py       # Automated PDF downloader
 │   └── tank-dat.pdf                 # Tank data reference
@@ -301,6 +302,30 @@ id,tank_name,tot_capacity_mcm,water_level_msl,storage_mcm,storage_percentage,cov
 ---
 
 ## Testing & CLI Tools
+
+### Realtime River Gauge Data
+Fetch the same recent gauge observations used by the Irrigation Department's
+Realtime Water Level dashboard. The script uses Python's standard library and
+does not require additional packages:
+
+```bash
+# Fetch the dashboard's default three-day observation window:
+python Tank-Reserviour/get-realtime-river-levels.py
+
+# Fetch a particular station's data:
+python Tank-Reserviour/get-realtime-river-levels.py \
+  --basin "Kelani Ganga" --station "Holombuwa"
+
+# List selectable basins or stations within a basin:
+python Tank-Reserviour/get-realtime-river-levels.py --list-basins
+python Tank-Reserviour/get-realtime-river-levels.py \
+  --list-stations --basin "Kelani Ganga"
+
+# Save the result as JSON or change the lookback (up to the source's seven-day window):
+python Tank-Reserviour/get-realtime-river-levels.py \
+  --basin "Kelani Ganga" --station "Holombuwa" --days 1 \
+  --output river-levels.json
+```
 
 ### Terminal SMS Gateway Test Tool
 A dedicated CLI tool is provided to test SMS dispatch directly from PowerShell or Bash:

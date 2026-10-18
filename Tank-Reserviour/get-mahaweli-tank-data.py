@@ -1,8 +1,3 @@
-"""
-Irrigation System Reservoir PDF to JSON Extractor
-Extracts only 'Irrigation System'
-
-"""
 import pdfplumber
 import json
 import re
@@ -44,7 +39,7 @@ UPSERT_TANK_SQL = """
 
 
 def clean_text_precision(val):
-    """Fixes space and kerning issues in text and numbers."""
+    #Fixes space and kerning issues in text and numbers
     if val is None:
         return ""
     text = str(val).strip()
@@ -95,7 +90,7 @@ def extract_header_date(pdf):
 
 
 def format_to_standard_date(raw_date_str, base_year, base_month):
-    """Converts '2-Oct' to '2026-10-02'."""
+  #Converts '2-Oct' to '2026-10-02'.
     cleaned = clean_text_precision(raw_date_str)
     if not cleaned or cleaned in ["-", "", ""]:
         return None
@@ -120,7 +115,7 @@ def format_to_standard_date(raw_date_str, base_year, base_month):
 
 
 def get_underlined_words(page):
-    """Detects text with vector underline graphics."""
+    #Detects text with underline 
     words = page.extract_words()
     lines = []
 
@@ -150,7 +145,7 @@ def get_underlined_words(page):
 
 
 def is_topic_header(row, underlined_words):
-    """Checks if row is an underlined section topic."""
+    #Checks if row is an underlined section topic.
     if len(row) < 2:
         return False, ""
 
@@ -171,14 +166,14 @@ def is_topic_header(row, underlined_words):
 
 
 def is_summary_row(row_cells):
-    """Identifies and skips summary rows."""
+    #dentifies and skips summary rows
     row_text = " ".join([clean_text_precision(c).lower() for c in row_cells if c])
     summary_keywords = ["sub total", "subtotal", "gross total", "total", "grand total"]
     return any(k in row_text for k in summary_keywords)
 
 
 def map_row_to_custom_json(row, base_year, base_month):
-    """Maps row data to customized JSON schema."""
+    #Maps row data to customized JSON schema.
     while len(row) < 14:
         row.append("")
 
