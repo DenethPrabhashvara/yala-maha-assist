@@ -39,7 +39,7 @@
  <div class="nav" id="nav"><button data-p="dash" class="on">Dashboard</button><button data-p="river">River</button><button data-p="map">Coverage Map</button><button data-p="sms">SMS Gateway</button><button data-p="portal">Farmer Portal</button><div class="nav-basin-wrap"><label for="basin-select" class="nav-basin-lbl"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Basin:</label><select id="basin-select" class="nav-basin-select" aria-label="Select River Basin"><optgroup label="Yan Oya River Basin"><option value="Horowpothana" selected>Yan Oya · Horowpothana</option></optgroup><optgroup label="Mahaweli Ganga Basin"><option value="Manampitiya">Mahaweli · Manampitiya</option><option value="Weraganthota">Mahaweli · Weraganthota</option><option value="Peradeniya">Mahaweli · Peradeniya</option><option value="Nawalapitiya">Mahaweli · Nawalapitiya</option></optgroup></select></div></div>
 
  <section class="page on" id="page-dash">
-  <div class="pt">Tank Dashboard</div><div class="ps">Palugaswewa Tank, sample data · Updated 6:00 AM</div>
+  <div class="pt">Tank Dashboard</div><div class="ps">Palugaswewa Tank · Water availability and river conditions</div>
   <div class="card" id="rv-risk-card" style="margin-bottom:14px">
  <div class="row" style="flex-wrap:wrap;gap:10px">
   <div>
@@ -72,29 +72,22 @@
   <div class="row" style="align-items:flex-start;flex-wrap:wrap;margin-bottom:8px">
    <div>
     <div class="pt">River Monitoring &amp; Flood Warning</div>
-    <div class="ps" style="margin-bottom:4px"><span id="rv-basin-subtitle">Yan Oya River Basin</span> · Open-Meteo &amp; Irrigation Dept. Real-time API · <span id="rv-updated">Updated just now</span></div>
+    <div class="ps" style="margin-bottom:4px"><span id="rv-basin-subtitle">Yan Oya River Basin</span> · Open-Meteo &amp; Irrigation Dept. · <span id="rv-updated">Connecting to live data...</span></div>
    </div>
    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <span class="chip" id="rv-api-status"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981;margin-right:4px"></span>Live API</span>
+    <span class="chip" id="rv-api-status"><span class="pulse-dot" style="background:#F59E0B"></span>Connecting</span>
     <button class="hb o" id="rv-refresh-btn" style="padding:7px 13px;font-size:12px"><svg class="i" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Refresh</button>
    </div>
   </div>
 
   <div class="card" style="padding:10px 14px;margin-bottom:14px">
    <div class="row" style="flex-wrap:wrap;gap:10px">
-    <div style="display:flex;align-items:center;gap:10px">
-     <span style="font-size:12.5px;font-weight:700;color:var(--ink)">Auto-send SMS:</span>
-     <div class="seg2" id="rv-auto-seg"><button class="on" data-auto="1">ON (Automatic)</button><button data-auto="0">OFF (Officer Approval)</button></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-     <span class="small" style="font-weight:600">Simulate Scenario:</span>
-     <div class="seg2" id="rv-scen-seg">
-      <button class="on" data-sc="live">Live API</button>
-      <button data-sc="safe">Safe (48%)</button>
-      <button data-sc="watch">Watch (70%)</button>
-      <button data-sc="warning">Warning (95%)</button>
-      <button data-sc="flood">Flood (107%)</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+     <div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--ink)">Flood alert dispatch</div>
+      <div class="small" style="margin-top:2px">Choose whether high-risk warnings need officer approval.</div>
      </div>
+     <div class="seg2" id="rv-auto-seg"><button class="on" data-auto="1">ON (Automatic)</button><button data-auto="0">OFF (Officer Approval)</button></div>
     </div>
    </div>
   </div>
@@ -118,23 +111,23 @@
   <div class="g4">
    <div class="card">
     <div class="k">Current river level</div>
-    <div class="v"><span id="rv-stat-curr">3.65 m</span><div class="bar"><i id="rv-bar-curr" style="width:81%;background:#F59E0B"></i></div></div>
-    <div class="cap" id="rv-cap-curr">81% of 4.50 m safe capacity</div>
+    <div class="v"><span id="rv-stat-curr">—</span><div class="bar"><i id="rv-bar-curr" style="width:0%;background:#94A3B8"></i></div></div>
+    <div class="cap" id="rv-cap-curr">Waiting for a measured gauge reading</div>
    </div>
    <div class="card">
     <div class="k">Predicted peak level</div>
-    <div class="v"><span id="rv-stat-peak">4.82 m</span><span class="pill bd" id="rv-pill-peak">+0.32 m overflow</span></div>
-    <div class="cap" id="rv-cap-peak">107% of safe capacity</div>
+    <div class="v"><span id="rv-stat-peak">—</span><span class="pill" id="rv-pill-peak">Unavailable</span></div>
+    <div class="cap" id="rv-cap-peak">Forecast will appear when data is available</div>
    </div>
    <div class="card">
     <div class="k">Flood risk level</div>
-    <div class="v"><span id="rv-stat-risk" style="color:var(--red)">Flood</span><span class="pill bd" id="rv-pill-risk">Critical</span></div>
-    <div class="cap" id="rv-cap-risk">Threshold: &gt; 100% of capacity</div>
+    <div class="v"><span id="rv-stat-risk" style="color:var(--mut)">—</span><span class="pill" id="rv-pill-risk">Awaiting data</span></div>
+    <div class="cap" id="rv-cap-risk">Risk is assessed from live readings and forecast</div>
    </div>
    <div class="card">
     <div class="k">Time to peak exceedance</div>
-    <div class="v"><span id="rv-stat-time">Thursday</span><span class="pill am" id="rv-pill-time">~48 hrs</span></div>
-    <div class="cap" id="rv-cap-time">Expected Thursday evening</div>
+    <div class="v"><span id="rv-stat-time">—</span><span class="pill" id="rv-pill-time">Unavailable</span></div>
+    <div class="cap" id="rv-cap-time">No peak timing available</div>
    </div>
   </div>
   
@@ -145,44 +138,38 @@
    <div class="cs" style="margin:0">Irrigation Department readings · <span id="rv-gauges-updated">Loading...</span></div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-   <span class="chip" id="rv-gauges-api-mark"><span class="pulse-dot"></span>Live API Data</span>
+   <span class="chip" id="rv-gauges-api-mark"><span class="pulse-dot" style="background:#F59E0B"></span>Connecting</span>
    <span class="chip">Source: Irrigation Dept.</span>
   </div>
  </div>
  <div class="tw"><table>
   <thead><tr><th>Station</th><th>River</th><th>Level</th><th>Status</th><th>Trend</th><th>Last reading</th></tr></thead>
-  <tbody id="rv-gauges-tbody"><tr><td colspan="6">Loading...</td></tr></tbody>
+  <tbody id="rv-gauges-tbody"><tr><td colspan="6">Connecting to gauge service...</td></tr></tbody>
  </table></div>
 </div>
 
   <div class="cols d-cols">
    <div class="card">
-    <div class="row"><div class="ct" style="margin:0">River Gauge &amp; Flow</div><span class="pill bd" id="rv-gauge-badge">Overflow risk</span></div>
+    <div class="row"><div class="ct" style="margin:0">River Gauge &amp; Flow</div><span class="pill" id="rv-gauge-badge">Awaiting data</span></div>
     <div class="tankw" id="rv-gauge-wrap">
      <svg viewBox="0 0 160 210" id="rv-gauge-svg">
       <defs>
        <clipPath id="rc-clip"><rect x="10" y="10" width="140" height="190" rx="24"/></clipPath>
        <linearGradient id="rg-grad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#F43F5E"/>
-        <stop offset="1" stop-color="#FDA4AF"/>
+        <stop offset="0" stop-color="#CBD5E1"/>
+        <stop offset="1" stop-color="#E2E8F0"/>
        </linearGradient>
       </defs>
-      <rect x="10" y="10" width="140" height="190" rx="24" fill="#FFF1F2" stroke="#FECDD3" stroke-width="4"/>
-      <g clip-path="url(#rc-clip)">
-       <path d="M0 65q20-10 40 0t40 0 40 0 40 0V210H0z" fill="url(#rg-grad)"/>
-       <path d="M0 58q20-10 40 0t40 0 40 0 40 0" fill="none" stroke="#E11D48" stroke-width="1.500"/>
-       <line x1="10" x2="150" y1="80" y2="80" stroke="#BE123C" stroke-dasharray="4 3" stroke-width="1.5"/>
-       <text x="80" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="#BE123C">SAFE CAPACITY 4.50m</text>
-      </g>
-      <text x="80" y="44" text-anchor="middle" font-size="30" font-weight="800" fill="#BE123C" font-family="Inter,sans-serif" id="rv-gauge-pct">107%</text>
-      <text x="80" y="58" text-anchor="middle" font-size="9" fill="#64748B" font-family="Inter,sans-serif" id="rv-gauge-txt">SAFE CAPACITY EXCEEDED</text>
-     </svg>
+       <rect x="10" y="10" width="140" height="190" rx="24" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="4"/>
+       <text x="80" y="92" text-anchor="middle" font-size="30" font-weight="800" fill="#64748B" font-family="Inter,sans-serif" id="rv-gauge-pct">—</text>
+       <text x="80" y="108" text-anchor="middle" font-size="9" fill="#64748B" font-family="Inter,sans-serif" id="rv-gauge-txt">WAITING FOR READING</text>
+      </svg>
     </div>
     <div class="rows">
-     <div>Safe bank capacity<b>4.50 m</b></div>
-     <div>Current discharge<b id="rv-row-qcurr">37.0 m³/s</b></div>
-     <div>Peak forecast discharge<b id="rv-row-qpeak">68.5 m³/s</b></div>
-     <div>Catchment 7d rain<b id="rv-row-rain">46.0 mm</b></div>
+      <div>Safe bank capacity<b id="rv-row-capacity">—</b></div>
+      <div>Current discharge<b id="rv-row-qcurr">—</b></div>
+      <div>Peak forecast discharge<b id="rv-row-qpeak">—</b></div>
+      <div>Catchment 7d rain<b id="rv-row-rain">—</b></div>
     </div>
    </div>
    <div>
@@ -263,7 +250,7 @@
        <th>Safety Precaution</th>
       </tr>
      </thead>
-     <tbody id="rv-villages-tbody"></tbody>
+     <tbody id="rv-villages-tbody"><tr><td colspan="8">Waiting for live river readings...</td></tr></tbody>
     </table>
    </div>
   </div>

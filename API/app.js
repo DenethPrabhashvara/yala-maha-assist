@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const apiroute = require('./routes/apiroutes.js')
+const alertroutes = require('./routes/alertroutes.js')
 const errorHandle = require('./middleware/errorHandles.js')
 
 const app = express()
@@ -25,20 +26,31 @@ app.get('/', (req, res) => {
             mahaweli: '/api/mahaweli (Public CSV)',
             mahaweliJson: '/api/mahaweli?format=json',
             mahaweliCsv: '/api/mahaweli/csv',
-            mahaweliById: '/api/mahaweli/:id'
+            mahaweliById: '/api/mahaweli/:id',
+            reservoir:'/api/reservoir',
+            resorvoirById: '/api/reservoir'
         }
     })
 })
 
 // Convenience alias for /mahaweli-data
 app.get('/mahaweli-data', (req, res) => {
-    res.redirect(307, '/api/mahaweli')
+    res.redirect(307, '/api/mahaweli?format=csv')
 })
 
-// Mount API routes under /api
-app.use('/api', apiroute)
 
-// Error Handling Middleware
+
+app.use('/api', apiroute)
+app.use('/sms', alertroutes)
+
+// Error handling middleware
 app.use(errorHandle)
+
+app.all('/*splat', (req, res, next) => {
+  res.status(404).json({
+    status: 'error',
+    message: `Route ${req.originalUrl} not found`
+  });
+});
 
 module.exports = app
