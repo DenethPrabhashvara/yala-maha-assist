@@ -8,7 +8,6 @@
  */
 
 let riverAutoSend = (typeof RIVER_CONFIG !== 'undefined' && RIVER_CONFIG.alerts) ? RIVER_CONFIG.alerts.autoSendEnabledDefault : true;
-let currentScenario = 'live';
 let selectedBasinStation = 'Horowpothana';
 let lastDispatchedRisk = null;
 let pendingOfficerAlert = null;
@@ -102,8 +101,6 @@ function initRiverPage() {
       if (subTitle) subTitle.textContent = `${st.basin} (${st.river})`;
       toast(`Selected basin: ${st.river} · ${st.name}`);
 
-      currentScenario = 'live';
-      $$('#rv-scen-seg button').forEach(x => x.classList.toggle('on', x.dataset.sc === 'live'));
       fetchRiverData();
       if (typeof show === 'function') show('river');
     };
@@ -132,29 +129,8 @@ function initRiverPage() {
     };
   }
 
-  if ($('#rv-scen-seg')) {
-    $('#rv-scen-seg').onclick = e => {
-      const b = e.target.closest('button');
-      if (!b) return;
-      const sc = b.dataset.sc;
-      $$('#rv-scen-seg button').forEach(x => x.classList.toggle('on', x === b));
-      currentScenario = sc;
-      if (sc === 'live') {
-        fetchRiverData();
-      } else {
-        applyRiverScenario(sc, true);
-      }
-    };
-  }
-
   if ($('#rv-refresh-btn')) {
-    $('#rv-refresh-btn').onclick = () => {
-      if (currentScenario === 'live') {
-        fetchRiverData();
-      } else {
-        applyRiverScenario(currentScenario, true, 'Data refreshed');
-      }
-    };
+    $('#rv-refresh-btn').onclick = () => fetchRiverData();
   }
 
   if ($('#rv-btn-approve')) {
@@ -175,14 +151,15 @@ function initRiverPage() {
   }
 
   const intervalMins = (typeof RIVER_CONFIG !== 'undefined' && RIVER_CONFIG.api && RIVER_CONFIG.api.refreshIntervalMinutes) ? RIVER_CONFIG.api.refreshIntervalMinutes : 30;
-  setInterval(() => {
-    if (currentScenario === 'live') fetchRiverData();
-  }, intervalMins * 60 * 1000);
+  setInterval(fetchRiverData, intervalMins * 60 * 1000);
 }
 
 async function fetchRiverData() {
   const cfg = (typeof RIVER_CONFIG !== 'undefined') ? RIVER_CONFIG : null;
-  if (!cfg) return;
+  if (!cfg) {
+    renderRiverUnavailable('River data configuration is unavailable.');
+    return;
+  }
 
   const st = getSelectedBasinStation();
   const statusChip = $('#rv-api-status');
@@ -221,11 +198,8 @@ async function fetchRiverData() {
 
     processRealRiverData(st, gaugeData, weatherJson, floodJson);
   } catch (err) {
-    console.warn('Real-time API fetch encountered error, applying calibrated fallback:', err);
-    if (statusChip) statusChip.innerHTML = `<span class="pill am" style="font-size:10px">Cached · Fallback</span>`;
-    if ($('#rv-updated')) $('#rv-updated').textContent = 'Cached · Last updated 6:00 AM';
-    applyRiverScenario('watch', false, 'Cached live fallback');
-    toast(`Real-time API: using cached hydrological baseline for ${st.name}`);
+    console.warn(`Live river data could not be loaded for ${st.name}:`, err);
+    renderRiverUnavailable(`Live readings are unavailable for ${st.name}. Try refreshing in a moment.`);
   }
 }
 
@@ -241,8 +215,12 @@ function processRealRiverData(st, gaugeData, weatherJson, floodJson) {
   const dayKeys = Object.keys(daysObj).sort();
   const past7Keys = dayKeys.slice(-7);
 
-  if (past7Keys.length > 0) {
-    past7Keys.forEach((dayKey, idx) => {
+  if (past7Keys.length === 0) {
+    renderRiverUnavailable(`No recent gauge readings are available for ${st.name}.`);
+    return;
+  }
+
+  past7Keys.forEach((dayKey, idx) => {
       const times = daysObj[dayKey];
       const timeKeys = Object.keys(times).sort();
       const latestTime = timeKeys[timeKeys.length - 1];
@@ -258,26 +236,14 @@ function processRealRiverData(st, gaugeData, weatherJson, floodJson) {
       // Estimated discharge based on water level
       const discharge = +(Math.max(3.0, (levelM > 0 ? levelM : 0.8) * 8.5)).toFixed(1);
       history.push({ label, levelM, discharge, date: dt });
-    });
-  } else {
-    // Graceful fallback for history if station has no readings
-    const today = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const dt = new Date(today.getTime() - i * 86400000);
-      const isToday = (i === 0);
-      const label = isToday
-        ? `${dt.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} (Today)`
-        : dt.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
-      history.push({ label, levelM: +(safeCap * 0.45).toFixed(2), discharge: 14.5, date: dt });
-    }
-  }
+  });
 
   const currentLevel = history[history.length - 1].levelM;
   const currentDischarge = history[history.length - 1].discharge;
 
   // 2. Build 7-Day Forecast from Open-Meteo precipitation & discharge
   const forecast = [];
-  const rainList = (weatherJson && weatherJson.daily && weatherJson.daily.precipitation_sum) || [2.5, 5.0, 14.0, 18.5, 8.0, 2.0, 0.5];
+  const rainList = (weatherJson && weatherJson.daily && weatherJson.daily.precipitation_sum) || [];
   const qList = (floodJson && floodJson.daily && floodJson.daily.river_discharge) || [];
   const timesList = (weatherJson && weatherJson.daily && weatherJson.daily.time) || [];
 
@@ -354,23 +320,73 @@ function processRealRiverData(st, gaugeData, weatherJson, floodJson) {
   renderRiverPage();
 }
 
-function applyRiverScenario(scenKey, showToastNotice, statusLabel) {
-  const cfg = RIVER_CONFIG;
-  const scen = (cfg.sampleScenarios && cfg.sampleScenarios[scenKey]) ? cfg.sampleScenarios[scenKey] : cfg.sampleScenarios.flood;
-  riverData = JSON.parse(JSON.stringify(scen));
-  riverData.safeCapacityMeters = cfg.river.safeCapacityMeters || 4.50;
+function renderRiverUnavailable(message) {
+  riverData = null;
 
   const statusChip = $('#rv-api-status');
-  if (statusChip) {
-    if (scenKey === 'live') {
-      statusChip.innerHTML = `<span class="pulse-dot"></span>Live API`;
-    } else {
-      statusChip.innerHTML = `<span class="pill ok" style="font-size:10px">Simulation: ${scen.name.split(' ')[0]}</span>`;
-    }
+  if (statusChip) statusChip.innerHTML = '<span class="pulse-dot" style="background:#EF4444"></span>Data unavailable';
+  if ($('#rv-updated')) $('#rv-updated').textContent = message;
+  if ($('#rv-gauges-api-mark')) $('#rv-gauges-api-mark').textContent = 'Unavailable';
+  if ($('#rv-gauges-updated')) $('#rv-gauges-updated').textContent = 'No recent readings';
+  if ($('#rv-gauges-tbody')) {
+    $('#rv-gauges-tbody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
   }
-  if ($('#rv-updated')) $('#rv-updated').textContent = statusLabel || `Scenario: ${scen.name}`;
-  renderRiverPage();
-  if (showToastNotice) toast(`Simulating: ${scen.name}`);
+
+  const values = {
+    '#rv-stat-curr': '—',
+    '#rv-stat-peak': '—',
+    '#rv-stat-risk': 'Unavailable',
+    '#rv-stat-time': '—',
+    '#rv-cap-curr': 'Waiting for a measured gauge reading',
+    '#rv-cap-peak': 'Forecast will appear when data is available',
+    '#rv-cap-risk': 'Risk cannot be assessed without current readings',
+    '#rv-cap-time': 'No peak timing available',
+    '#rv-row-capacity': '—',
+    '#rv-row-qcurr': '—',
+    '#rv-row-qpeak': '—',
+    '#rv-row-rain': '—',
+    '#rv-gauge-pct': '—',
+    '#rv-gauge-txt': 'NO LIVE READING'
+  };
+  Object.entries(values).forEach(([selector, value]) => {
+    const el = $(selector);
+    if (el) el.textContent = value;
+  });
+
+  ['#rv-pill-peak', '#rv-pill-risk', '#rv-pill-time', '#rv-gauge-badge'].forEach(selector => {
+    const el = $(selector);
+    if (el) {
+      el.className = 'pill';
+      el.textContent = 'Unavailable';
+    }
+  });
+  if ($('#rv-bar-curr')) {
+    $('#rv-bar-curr').style.width = '0%';
+    $('#rv-bar-curr').style.background = '#94A3B8';
+  }
+  const gaugeWrap = $('#rv-gauge-wrap');
+  if (gaugeWrap) {
+    gaugeWrap.innerHTML = `
+      <svg viewBox="0 0 160 210">
+        <rect x="10" y="10" width="140" height="190" rx="24" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="4"/>
+        <text id="rv-gauge-pct" x="80" y="92" text-anchor="middle" font-size="30" font-weight="800" fill="#64748B" font-family="Inter,sans-serif">—</text>
+        <text id="rv-gauge-txt" x="80" y="108" text-anchor="middle" font-size="9" fill="#64748B" font-family="Inter,sans-serif">NO LIVE READING</text>
+      </svg>
+    `;
+  }
+  if ($('#rv-chart')) $('#rv-chart').replaceChildren();
+  if ($('#rv-villages-tbody')) {
+    $('#rv-villages-tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
+  }
+  if ($('#rv-villages-summary')) {
+    $('#rv-villages-summary').textContent = 'Waiting for live data';
+    $('#rv-villages-summary').className = 'chip';
+  }
+  ['#rv-prev-en', '#rv-prev-si', '#rv-prev-ta'].forEach(selector => {
+    const el = $(selector);
+    if (el) el.textContent = 'Current conditions are unavailable. Check back when live river readings have refreshed.';
+  });
+  hideOfficerBanner();
 }
 
 function renderRiverPage() {
@@ -456,6 +472,7 @@ function renderRiverPage() {
   if ($('#rv-cap-time')) $('#rv-cap-time').textContent = `Peak expected ${peakDate}`;
 
   updateRiverGauge(curr, peak, safeCap);
+  if ($('#rv-row-capacity')) $('#rv-row-capacity').textContent = `${safeCap.toFixed(2)} m`;
 
   if ($('#rv-row-qcurr')) $('#rv-row-qcurr').textContent = `${(riverData.currentDischargeM3s || 14.5).toFixed(1)} m³/s`;
   if ($('#rv-row-qpeak')) $('#rv-row-qpeak').textContent = `${(riverData.peakDischargeM3s || 18.0).toFixed(1)} m³/s`;

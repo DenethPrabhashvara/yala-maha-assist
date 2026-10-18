@@ -101,7 +101,7 @@ function renderPhoneSignIn(t) {
 
       <div style="font-size:12px;color:var(--mut);margin:10px 0 4px;display:flex;align-items:center;gap:6px">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10B981"></span>
-        <span>Connected to Text.lk SMS Gateway</span>
+        <span>A verification code will be sent to this number.</span>
       </div>
 
       <button class="btn" id="go1" style="margin-top:10px">
@@ -125,7 +125,7 @@ function renderOtpVerification(t) {
 
       <div class="form-group">
         <div class="otp" id="otp">
-          ${[0, 1, 2, 3, 4, 5].map(i => `<input maxlength="1" inputmode="numeric" value="${[5, 2, 9][i] || ''}" autocomplete="${i ? 'off' : 'one-time-code'}">`).join('')}
+          ${[0, 1, 2, 3, 4, 5].map(i => `<input maxlength="1" inputmode="numeric" autocomplete="${i ? 'off' : 'one-time-code'}">`).join('')}
         </div>
       </div>
 
@@ -654,10 +654,10 @@ function bindEvents() {
           go1Btn.innerHTML = `${ico.send || ''} ${t.sms}`;
         }
       } catch (err) {
-        console.warn('Backend offline, proceeding in demo mode:', err);
-        toast('SMS Gateway simulated (API offline)');
-        scr = 1;
-        render();
+        console.warn('Could not send verification SMS:', err);
+        toast('Could not reach the SMS service. Please try again.');
+        go1Btn.disabled = false;
+        go1Btn.innerHTML = `${ico.send || ''} ${t.sms}`;
       }
     };
   }
@@ -712,9 +712,12 @@ function bindEvents() {
             go2Btn.innerHTML = `${ico.lock || ''} ${t.vb}`;
           }
         } catch (err) {
-          console.warn('API error, accepting demo OTP:', err);
-          scr = 'reg1';
-          render();
+          console.warn('Could not verify OTP:', err);
+          toast('Could not reach the verification service. Please try again.');
+          inputs.forEach(inp => inp.value = '');
+          if (inputs[0]) inputs[0].focus();
+          go2Btn.disabled = false;
+          go2Btn.innerHTML = `${ico.lock || ''} ${t.vb}`;
         }
       };
     }
@@ -742,8 +745,8 @@ function bindEvents() {
           cd = 30;
           updateCountdown();
         } catch (e) {
-          toast('Resent demo OTP');
-          cd = 30;
+          console.warn('Could not resend verification SMS:', e);
+          toast('Could not resend the code. Please try again.');
         }
       };
     }
