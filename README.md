@@ -6,7 +6,7 @@ Yala-Maha Assist is a comprehensive, modular web application designed for hydrol
 
 **Version:** 1.0  
 **Primary Focus:** Farmland management, water resource optimization, agricultural sustainability, disaster mitigation  
-**Technologies:** Node.js, Express.js, PostgreSQL, Vanilla JavaScript (ES6+), SVG, HTML5, CSS3, Text.lk SMS Gateway  
+**Technologies:** React, Vite, Node.js, Express.js, PostgreSQL, SVG, HTML5, CSS3, Text.lk SMS Gateway
 **Target Users:** Irrigation Officers, Agrarian Extension Officers, Registered Farmers, Government Agencies  
 
 ---
@@ -208,9 +208,9 @@ Run `api/models/schema.sql` against your PostgreSQL database:
 psql -U postgres -d yala-maha-api -f api/models/schema.sql
 ```
 
-### 4. Run the Servers
+### 4. Run the Applications
 
-#### Start the API Server (Port 8005):
+#### Start the API service (Port 8005):
 ```bash
 cd api
 node server.js
@@ -218,10 +218,22 @@ node server.js
 npm run api
 ```
 
-#### Start the Main Web Server (Port 3007):
+#### Start the React + Vite frontend:
 ```bash
-node server.js
+npm run dev
 ```
+The frontend reads tank data from `http://127.0.0.1:8005/api`. Set `VITE_API_BASE` to change the API base URL.
+Create a production bundle with `npm run build`, or serve it locally with `npm run preview`.
+
+### React Frontend Structure
+- `src/App.jsx` coordinates screen selection, shared data hooks, and the top-level layout.
+- `src/components/` contains the navigation, dashboard, coverage screen, reusable tank table, placeholders, and shared UI.
+- `src/hooks/` loads tank and reservoir data from the API.
+- `src/api/` contains API request and record-formatting helpers.
+
+The React dashboard currently uses the working `GET /mahaweli` and `GET /reservoir` routes. It requests `/mahaweli` with `Accept: */*` because the current API returns CSV for an explicit `Accept: application/json` request; `/reservoir` returns JSON. River gauges, weather forecasts, SMS dispatch, and farmer registration remain UI placeholders until supported routes are available.
+
+When a reservoir is selected, the dashboard also loads its metadata from `/reservoir/:id` and up to 30 days of readings from `/reservoir/:id/history`. History fields such as `water_depth_ft`, `usable_storage_percent`, and `rainfall_prev_day_mm` drive the selected-reservoir overview and charts; rainfall is displayed as reported history, not as a forecast.
 
 ---
 

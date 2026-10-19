@@ -1,13 +1,24 @@
-CREATE TABLE IF NOT EXISTS mahawelitanks(
-    id SERIAL PRIMARY KEY,
-    tank_name VARCHAR(50) NOT NULL UNIQUE,
-    tot_capacity_mcm DECIMAL(6,3),
-    water_level_msl DECIMAL(7,3),
-    storage_mcm DECIMAL(6,3),
-    storage_percentage DECIMAL(6,2),
-    covered_land_acres INT,
-    rainfall_last_24h_mm DECIMAL(6,3)
-)
+CREATE TABLE IF NOT EXISTS mahawelitanks (
+  id                 INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tank_name          TEXT NOT NULL UNIQUE,
+  tot_capacity_mcm   NUMERIC(10,3) NOT NULL CHECK (tot_capacity_mcm > 0),
+  covered_land_acres NUMERIC(12,2) CHECK (covered_land_acres >= 0),
+  createdat          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS mahaweli_water_level (
+  id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tank_id            INTEGER NOT NULL REFERENCES mahawelitanks(id) ON DELETE CASCADE,
+  reading_date       DATE NOT NULL,
+  water_level_msl    NUMERIC(7,2),
+  storage_mcm        NUMERIC(10,3) CHECK (storage_mcm >= 0),
+  storage_percentage NUMERIC(5,2) CHECK (storage_percentage >= 0),
+  rainfall_24h_mm    NUMERIC(6,1) CHECK (rainfall_24h_mm >= 0),
+  recorded_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_tank_day UNIQUE (tank_id, reading_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_water_level_date ON mahaweli_water_level (reading_date DESC);
 
 CREATE TABLE reservoirs (
   id                 SERIAL PRIMARY KEY,
