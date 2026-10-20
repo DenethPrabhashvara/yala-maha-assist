@@ -57,3 +57,45 @@ CREATE INDEX idx_levels_lookup ON reservoir_levels (reservoir_id, reading_date D
 --This is just the schemas for all of API Related Databases !!!  -D3n3th
 --TODO   - ADD ANOTHER TABLE TO STORE RAIN_DATA
 --CREATE A DATABASES WITH : 
+CREATE TABLE IF NOT EXISTS farmers (
+  farmer_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name       TEXT NOT NULL,
+  nic             TEXT unique not NULL
+                  CHECK (nic ~ '^([0-9]{9}[VvXx]|[0-9]{12})$'),  -- old (9 digits + V/X) or new (12 digits)
+  phone           TEXT unique not NULL,
+  address         TEXT not NULL,
+  district        TEXT not NULL,
+  division        TEXT,                                          -- Divisional Secretariat
+  farm_latitude   NUMERIC(10,6) CHECK (farm_latitude  BETWEEN -90  AND 90),
+  farm_longitude  NUMERIC(10,6) CHECK (farm_longitude BETWEEN -180 AND 180),
+
+  -- Water source: a reservoir OR a tank, never both (both NULL is allowed)
+  reservoir_id    INTEGER REFERENCES reservoirs(id)    ON DELETE SET NULL,
+  tank_id         INTEGER REFERENCES mahawelitanks(id) ON DELETE SET NULL,
+
+  land_acres      NUMERIC(10,2) CHECK (land_acres >= 0),
+  primary_crop    TEXT,
+  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT chk_single_water_source
+    CHECK (reservoir_id IS NULL OR tank_id IS NULL)
+);
+
+CREATE INDEX IF NOT EXISTS idx_farmers_reservoir ON farmers (reservoir_id);
+CREATE INDEX IF NOT EXISTS idx_farmers_tank      ON farmers (tank_id);
+CREATE INDEX IF NOT EXISTS idx_farmers_district  ON farmers (district, division);
+
+CREATE OR REPLACE FUNCTION set_updated_at() RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_farmers_updated_at ON farmers;
+CREATE TRIGGER trg_farmers_updated_at
+  BEFORE UPDATE ON farmers
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();

@@ -5,6 +5,9 @@ const alertroutes = require('./routes/alertroutes.js')
 const errorHandle = require('./middleware/errorHandles.js')
 const rateLimit = require('express-rate-limit')
 const slowDownReq = require('express-slow-down')
+const helmet =require('helmet')  //Security
+const cookieparser = require('cookie-parser')
+const authrouter = require('./routes/authroutes.js')
 
 const ALLOWED_IP = '::ffff:127.0.0.1' // skip rate limit for localhost for dev purposes
 
@@ -44,44 +47,50 @@ const limiter = rateLimit({
 const app = express()
 
 // Global Middleware
-app.use(express.json())
+app.use(helmet())
+app.use(cookieparser())
+app.use(express.json( {limit: '10mb'}))
+app.use(express.urlencoded( {extended: true, limit: '10mb'}))
 app.use(slowDown)
 app.use(limiter)
 
-app.use(express.urlencoded({ extended: true }))
 
-// Enable CORS for public API consumption across origins
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }))
 
-// Root health & service discovery
+
+
+// health & service discovery
 app.get('/', (req, res) => {
     res.status(200).json({
         status: 'success',
         message: 'Yala-Maha Assist API Server',
         endpoints: {
-            mahaweli: '/api/mahaweli (Public CSV)',
-            mahaweliJson: '/api/mahaweli?format=json',
+            mahaweli: '/api/mahaweli',
+            mahaweliJson: '/api/mahaweli?format=csv', 
             mahaweliCsv: '/api/mahaweli/csv',
             mahaweliById: '/api/mahaweli/:id',
+            forecastByTankId: '/api/forecast/:id',
             reservoir:'/api/reservoir',
-            resorvoirById: '/api/reservoir'
+            resorvoirById: '/api/reservoir',
+            resorvoirHistoryByDays: '/api/reservoir/:id/history?days=30'
         }
     })
 })
 
 // Convenience alias for /mahaweli-data
 app.get('/mahaweli-data', (req, res) => {
-    res.redirect(307, '/api/mahaweli?format=csv')
+    res.redirect(307, '/api/mahaweli?format=csv') 
 })
 
 
-
-app.use('/api', apiroute)
 app.use('/sms', alertroutes)
+
+app.use('/api/det', apiroute) // for resevoirs and tanks
+app.use('/api/auth', authrouter)   //for l0gin auth
 
 // Error handling middleware
 app.use(errorHandle)

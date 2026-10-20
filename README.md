@@ -231,7 +231,7 @@ Create a production bundle with `npm run build`, or serve it locally with `npm r
 - `src/hooks/` loads tank and reservoir data from the API.
 - `src/api/` contains API request and record-formatting helpers.
 
-The React dashboard currently uses the working `GET /mahaweli` and `GET /reservoir` routes. It requests `/mahaweli` with `Accept: */*` because the current API returns CSV for an explicit `Accept: application/json` request; `/reservoir` returns JSON. River gauges, weather forecasts, SMS dispatch, and farmer registration remain UI placeholders until supported routes are available.
+The React dashboard currently uses the working `GET /mahaweli` and `GET /reservoir` routes. It requests `/mahaweli` with `Accept: */*` because the current API returns CSV for an explicit `Accept: application/json` request; `/reservoir` returns JSON. The tank forecast is available through `GET /api/forecast/:id`; river gauges, SMS dispatch, and farmer registration remain UI placeholders until supported routes are available.
 
 When a reservoir is selected, the dashboard also loads its metadata from `/reservoir/:id` and up to 30 days of readings from `/reservoir/:id/history`. History fields such as `water_depth_ft`, `usable_storage_percent`, and `rainfall_prev_day_mm` drive the selected-reservoir overview and charts; rainfall is displayed as reported history, not as a forecast.
 
@@ -251,6 +251,9 @@ The Mahaweli tanks API is publicly accessible with full CORS support (`Access-Co
 | `GET` | `/api/mahaweli?format=json` | **JSON** | Alternative JSON format containing full dataset and metadata |
 | `GET` | `/api/mahaweli/:id` | **JSON** | Retrieve single tank record by ID (e.g. `/api/mahaweli/1`) |
 | `GET` | `/api/mahaweli/:id?format=csv` | **CSV** | Retrieve single tank record in CSV format (also supports `/api/mahaweli/:id.csv`) |
+| `GET` | `/api/forecast/:id` | **JSON** | Calculate and return a 14-day forecast for a tank using its stored readings (e.g. `/api/forecast/1`); requires the ML service on port 5000 |
+
+The forecast route looks up the numeric `mahawelitanks.id`, converts its recent `storage_mcm` readings to the Ac-ft units required by the model, and returns the prediction. Start the ML service with `node ml-model/server.js`; set `FORECAST_API_URL` in `API/config.env` if it is not running at `http://localhost:5000`.
 
 #### Quick Examples:
 
