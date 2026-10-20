@@ -41,7 +41,7 @@ exports.getAllTanks = async (req, res, next) => {
   try {
     const result = await db.query("SELECT * FROM mahawelitanks ORDER BY id ASC")
 
-    // Allow opting into JSON explicitly via ?format=json
+    // Allow opting into csv using ?format=csv
     const isCSVRequested = req.query.format === 'csv' ||
       (req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/csv') && !req.headers.accept.includes('*/*'))
 

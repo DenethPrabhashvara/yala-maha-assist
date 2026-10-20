@@ -31,6 +31,8 @@ let regData = {
   name: "Sunil Bandara",
   nic: "",
   maskedNic: "",
+  address: "",
+  district: "",
   region: "mahaweli-b",
   crops: [
     { category: "paddy", crop: "White Rice (BG)", species: "BG 352 (3.5 Months)", acres: 3.5, yield: 2400, yieldUnit: "kg_acre" }
@@ -51,6 +53,16 @@ let regData = {
 
 function cleanDigits(str) {
   return String(str || '').replace(/\D/g, '');
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
 }
 
 function getCropOptionsHtml(catKey, selectedCrop) {
@@ -153,13 +165,23 @@ function renderRegistrationStep1(t) {
 
       <div class="form-group">
         <label>${t.regFullName}</label>
-        <input class="f" id="reg-name" placeholder="${t.regFullNamePh}" value="${regData.name}">
+        <input class="f" id="reg-name" placeholder="${t.regFullNamePh}" value="${escapeHtml(regData.name)}">
       </div>
 
       <div class="form-group">
         <label>${t.regNic}</label>
-        <input class="f" id="reg-nic" placeholder="${t.regNicPh}" value="${regData.nic}">
+        <input class="f" id="reg-nic" placeholder="${t.regNicPh}" value="${escapeHtml(regData.nic)}">
         <div id="reg-nic-err" style="color:var(--red);font-size:12px;font-weight:600;margin-top:4px;display:none"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Address</label>
+        <input class="f" id="reg-address" autocomplete="street-address" value="${escapeHtml(regData.address)}" required>
+      </div>
+
+      <div class="form-group">
+        <label>District</label>
+        <input class="f" id="reg-district" autocomplete="address-level2" value="${escapeHtml(regData.district)}" required>
       </div>
 
       <div class="form-group">
@@ -632,7 +654,7 @@ function bindEvents() {
       go1Btn.innerHTML = `<span>Sending SMS...</span>`;
 
       try {
-        const response = await fetch(`${API_BASE}/api/sms/send-otp`, {
+        const response = await fetch(`${API_BASE}/api/auth/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: v })
@@ -692,7 +714,7 @@ function bindEvents() {
 
         try {
           const rawPhone = cleanDigits(phone);
-          const response = await fetch(`${API_BASE}/api/sms/verify-otp`, {
+          const response = await fetch(`${API_BASE}/api/auth/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone: rawPhone, otp: enteredOtp })
@@ -700,6 +722,12 @@ function bindEvents() {
           const data = await response.json();
 
           if (response.ok && data.status === 'success') {
+            if (data.alreadyRegistered) {
+              toast(data.message || 'A farmer account already exists for this number.');
+              scr = 2;
+              render();
+              return;
+            }
             toast('Mobile number verified! ✓');
             scr = 'reg1';
             render();
@@ -733,7 +761,7 @@ function bindEvents() {
         if (cd > 0) return;
         toast('Resending OTP SMS...');
         try {
-          await fetch(`${API_BASE}/api/sms/send-otp`, {
+          await fetch(`${API_BASE}/api/auth/send-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone: cleanDigits(phone) })
@@ -825,12 +853,21 @@ function bindEvents() {
     reg1Btn.onclick = () => {
       const nameInput = $('#reg-name');
       const nicInput = $('#reg-nic');
+      const addressInput = $('#reg-address');
+      const districtInput = $('#reg-district');
       const nm = nameInput ? nameInput.value.trim() : '';
       const nicVal = nicInput ? nicInput.value.trim() : '';
+      const address = addressInput ? addressInput.value.trim() : '';
+      const district = districtInput ? districtInput.value.trim() : '';
 
       if (!nm) {
         if (nameInput) nameInput.classList.add('err');
         toast(t.regNameRequired);
+        return;
+      }
+
+      if (!address || !district) {
+        toast('Address and district are required');
         return;
       }
 
@@ -852,6 +889,8 @@ function bindEvents() {
 
       regData.name = nm;
       regData.nic = vNic.formatted;
+      regData.address = address;
+      regData.district = district;
       regData.maskedNic = (typeof FARM_CONFIG !== 'undefined' && typeof FARM_CONFIG.maskNIC === 'function')
         ? FARM_CONFIG.maskNIC(vNic.formatted)
         : vNic.formatted;
@@ -995,6 +1034,31 @@ function bindEvents() {
       const totalAcres = getRegTotalAcres();
       const rawPhone = cleanDigits(phone);
 
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: rawPhone,
+            full_name: regData.name,
+            nic: regData.nic,
+            address: regData.address,
+            district: regData.district,
+            land_acres: totalAcres,
+            primary_crop: regData.crops[0]?.crop || null
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+          throw new Error(result.message || 'Could not complete farmer registration.');
+        }
+      } catch (error) {
+        toast(error.message || 'Could not complete farmer registration.');
+        submitRegBtn.disabled = false;
+        submitRegBtn.innerHTML = t.regSubmitBtn;
+        return;
+      }
+
       const newFarm = {
         id: newId,
         farmerName: regData.name || 'Sunil Bandara',
@@ -1022,7 +1086,7 @@ function bindEvents() {
 
       // Dispatch confirmation SMS via backend SMS Gateway
       try {
-        await fetch(`${API_BASE}/api/sms/confirm-registration`, {
+        await fetch(`${API_BASE}/sms/confirm-registration`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

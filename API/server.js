@@ -5,12 +5,18 @@ const dotenv = require('dotenv')
 dotenv.config({ path: path.join(__dirname, 'config.env') })
 dotenv.config({ path: path.join(__dirname, '..', '.env') })
 
+const logger =require('./utils/logger.js')
 const app = require('./app.js')
 
-const PORT = process.env.PORT || 8005
+const PORT = process.env.API_PORT || 8005
 
-app.listen(PORT, () => {
-    console.log(`API Started Successfully on port ${PORT}`)
-})
+try{
+    app.listen(PORT, () => {
+        console.log(`API Started Successfully on port ${PORT}`)
+        logger.info(`API Running on PORT ${PORT}`)
+    })
 
-
+} catch(error) {
+    logger.error(`Error: ${error}`)
+    process.exit(1)
+}
