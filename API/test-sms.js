@@ -6,7 +6,7 @@ const isLive = args.includes('--live')
 const nonFlagArgs = args.filter(a => a !== '--live')
 
 const recipient = nonFlagArgs[0]
-const customMessage = nonFlagArgs[1] || 'YalaMaha ALERT: Test SMS from VisionEx Gateway'
+const customMessage = nonFlagArgs[1] || 'YalaMaha ALERT: Test SMS from Gateway'
 
 if (!recipient) {
   console.log(`
@@ -21,7 +21,7 @@ Examples:
   node test-sms.js 0771234567 --live
 
   # Custom message:
-  node test-sms.js 0771234567 "Hello from VisionEx" --live
+  node test-sms.js 0771234567 "Hello from Yala Maha Team" --live
 `)
   process.exit(1)
 }

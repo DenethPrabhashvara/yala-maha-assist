@@ -231,7 +231,7 @@ Create a production bundle with `npm run build`, or serve it locally with `npm r
 - `src/hooks/` loads tank and reservoir data from the API.
 - `src/api/` contains API request and record-formatting helpers.
 
-The React dashboard currently uses the working `GET /mahaweli` and `GET /reservoir` routes. It requests `/mahaweli` with `Accept: */*` because the current API returns CSV for an explicit `Accept: application/json` request; `/reservoir` returns JSON. River gauges, weather forecasts, SMS dispatch, and farmer registration remain UI placeholders until supported routes are available.
+The React dashboard currently uses the working `GET /mahaweli` and `GET /reservoir` routes. It requests `/mahaweli` with `Accept: */*` because the current API returns CSV for an explicit `Accept: application/json` request; `/reservoir` returns JSON. The tank forecast is available through `GET /api/forecast/:id`; river gauges, SMS dispatch, and farmer registration remain UI placeholders until supported routes are available.
 
 When a reservoir is selected, the dashboard also loads its metadata from `/reservoir/:id` and up to 30 days of readings from `/reservoir/:id/history`. History fields such as `water_depth_ft`, `usable_storage_percent`, and `rainfall_prev_day_mm` drive the selected-reservoir overview and charts; rainfall is displayed as reported history, not as a forecast.
 
@@ -251,6 +251,9 @@ The Mahaweli tanks API is publicly accessible with full CORS support (`Access-Co
 | `GET` | `/api/mahaweli?format=json` | **JSON** | Alternative JSON format containing full dataset and metadata |
 | `GET` | `/api/mahaweli/:id` | **JSON** | Retrieve single tank record by ID (e.g. `/api/mahaweli/1`) |
 | `GET` | `/api/mahaweli/:id?format=csv` | **CSV** | Retrieve single tank record in CSV format (also supports `/api/mahaweli/:id.csv`) |
+| `GET` | `/api/forecast/:id` | **JSON** | Calculate and return a 14-day forecast for a tank using its stored readings (e.g. `/api/forecast/1`); requires the ML service on port 5000 |
+
+The forecast route looks up the numeric `mahawelitanks.id`, converts its recent `storage_mcm` readings to the Ac-ft units required by the model, and returns the prediction. Start the ML service with `node ml-model/server.js`; set `FORECAST_API_URL` in `API/config.env` if it is not running at `http://localhost:5000`.
 
 #### Quick Examples:
 
@@ -321,10 +324,11 @@ Realtime Water Level dashboard. The script uses Python's standard library and
 does not require additional packages:
 
 ```bash
-# Fetch the dashboard's default three-day observation window:
+# Fetch all available observations from the source's seven-day window.
+# JSON is saved by default to Tank-Reserviour/realtime_river_levels.json:
 python Tank-Reserviour/get-realtime-river-levels.py
 
-# Fetch a particular station's data:
+# Fetch a particular station's data (also saved to the default JSON file):
 python Tank-Reserviour/get-realtime-river-levels.py \
   --basin "Kelani Ganga" --station "Holombuwa"
 
@@ -333,11 +337,50 @@ python Tank-Reserviour/get-realtime-river-levels.py --list-basins
 python Tank-Reserviour/get-realtime-river-levels.py \
   --list-stations --basin "Kelani Ganga"
 
-# Save the result as JSON or change the lookback (up to the source's seven-day window):
+# Change the lookback or choose a different JSON output path:
 python Tank-Reserviour/get-realtime-river-levels.py \
   --basin "Kelani Ganga" --station "Holombuwa" --days 1 \
   --output river-levels.json
 ```
+
+`CreationDate` and `EditDate` are written as ISO-8601 UTC timestamp strings
+(for example, `2026-10-23T15:40:27.219+00:00`), ready to insert into PostgreSQL
+`TIMESTAMPTZ` columns. Each observation also includes `station`, `latitude`, and
+`longitude`, joined from the dashboard's Hydrostations layer using basin and
+station name. If a gauge has no matching station metadata, its coordinates are
+`null` and the script reports the unmatched station names.
+
+### Realtime Rainfall Dashboard Data
+Fetch the rainfall dashboard's full seven-day observation window, station
+metadata and rainfall summaries. The script creates
+`public.rainfall_realtime` with `CREATE TABLE IF NOT EXISTS`, upserts every
+station from the JSON `stations` array (not the observations), and saves the
+result to `Tank-Reserviour/realtime_rainf_new.json` without overwriting the
+existing `realtime_rainfall.json`:
+
+```bash
+python Tank-Reserviour/get-realtime-rainfall.py
+
+# Optionally filter observations and choose a different output path:
+python Tank-Reserviour/get-realtime-rainfall.py \
+  --basin "Kelani Ganga" --station "Holombuwa" --days 3 \
+  --output kelani-rainfall.json
+```
+
+The table stores each station's basin, coordinates, unit, tributary, alert/flood
+levels and elevation, with the complete station record in a JSONB column. If an
+older observation-based `rainfall_realtime` table exists, the script preserves
+it as `rainfall_realtime_observations_archive` before creating the station table.
+The database defaults to the project's local `yala-maha-api` PostgreSQL
+database. Configure `APIDBHOST`, `APIDBPORT`, `APIDATABASE`, `APIDBUSERN`, and
+`APIDBPASSWORD` (or the equivalent `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
+and `DB_PASSWORD` variables) to use different connection settings. The Python
+environment needs `psycopg2`.
+
+The JSON contains all available gauge observation fields, station coordinates
+and metadata. Its `dashboard_views` object contains only `latest_nonzero_rainfall_updates`
+and `rainfall_observations_last_hour`. Observation timestamps are ISO-8601 UTC
+strings.
 
 ### Terminal SMS Gateway Test Tool
 A dedicated CLI tool is provided to test SMS dispatch directly from PowerShell or Bash:
