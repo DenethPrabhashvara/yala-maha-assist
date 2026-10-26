@@ -9,6 +9,7 @@ npm install
 npm run dev       # http://localhost:5173
 npm run build     # production build in dist/
 npm run preview   # serve the build
+npm run dev -- --host # to test on lan un different devices
 ```
 
 On a desktop browser the app shows inside a phone frame; on a phone it fills the screen. It can be added to the home screen (PWA manifest included).

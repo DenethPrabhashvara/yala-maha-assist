@@ -18,14 +18,14 @@ export default function Fields() {
       {!farm && <FieldCards farm={null} t={t} />}
       {farm && (
         <>
-          <Card dark className="farm-hero">
+          <Card className="farm-hero">
             <Aerial variant="hero" height={130} radius={22} photo={PHOTOS.paddy} />
             <div className="row between end" style={{ padding: '4px 6px 2px' }}>
               <div>
-                <div className="f13 dim">{t('farmId')}</div>
-                <div className="f32 fw600 accent-text">{farm.id}</div>
+                <div className="f13 muted">{t('farmId')}</div>
+                <div className="f28 fw600 brand-text">{farm.id}</div>
               </div>
-              <div className="f13 dim right lh">{total} {t('acres')}<br />{farm.nearest || 'Mahaweli B'}</div>
+              <div className="f13 muted right lh">{total} {t('acres')}<br />{farm.nearest || 'Mahaweli B'}</div>
             </div>
           </Card>
           {farm.water?.source && (
@@ -45,11 +45,11 @@ export default function Fields() {
                   <div className="f17 fw600">{c.type} · {c.variety}</div>
                 </div>
               </div>
-              <div className="grid3 f13">
-                <div className="soft-tile"><div className="muted">{t('landArea')}</div><div className="f16 fw600">{c.acres} ac</div></div>
-                <div className="soft-tile"><div className="muted">{t('lastYield')}</div><div className="f16 fw600">{c.yield || '—'}</div></div>
-                <div className="soft-tile"><div className="muted">Unit</div><div className="f14 fw600">{YIELD_UNITS.find((u) => u.id === c.unit)?.label}</div></div>
-              </div>
+              <dl className="kv-list">
+                <div className="kv"><dt>{t('landArea')}</dt><dd>{c.acres} ac</dd></div>
+                <div className="kv"><dt>{t('lastYield')}</dt><dd>{c.yield || '—'}</dd></div>
+                <div className="kv"><dt>Unit</dt><dd>{YIELD_UNITS.find((u) => u.id === c.unit)?.label}</dd></div>
+              </dl>
             </Card>
           ))}
           <Link to="/register/crops" className="pill-btn dark big" onClick={editFarm}>{t('editCrops')} <Icon name="pencil" size={18} /></Link>

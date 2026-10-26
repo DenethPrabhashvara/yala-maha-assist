@@ -68,19 +68,19 @@ export default function ForecastChart({ data, selected, onSelect, lang, labels, 
       {!compact && ticks.map((v) => (
         <g key={v}>
           <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,.08)" />
-          <text x={pad.l - 6} y={y(v) + 4} textAnchor="end" fontSize="10" fill={COLORS.dim}>{v}%</text>
+          <text x={pad.l - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill={COLORS.dim}>{v}%</text>
         </g>
       ))}
       {thresholds.spill >= y0 && thresholds.spill <= y1 && (
         <g>
           <line x1={pad.l} x2={W - pad.r} y1={y(thresholds.spill)} y2={y(thresholds.spill)} stroke={COLORS.spill} strokeDasharray="4 4" strokeWidth="1.5" />
-          {!compact && <text x={W - pad.r} y={y(thresholds.spill) - 5} textAnchor="end" fontSize="10" fontWeight="600" fill={COLORS.spill}>{labels?.spill} {thresholds.spill}%</text>}
+          {!compact && <text x={W - pad.r} y={y(thresholds.spill) - 5} textAnchor="end" fontSize="11" fontWeight="600" fill={COLORS.spill}>{labels?.spill} {thresholds.spill}%</text>}
         </g>
       )}
       {thresholds.low >= y0 && thresholds.low <= y1 && (
         <g>
           <line x1={pad.l} x2={W - pad.r} y1={y(thresholds.low)} y2={y(thresholds.low)} stroke={COLORS.warning} strokeDasharray="4 4" strokeWidth="1.5" />
-          {!compact && <text x={W - pad.r} y={y(thresholds.low) + 13} textAnchor="end" fontSize="10" fontWeight="600" fill={COLORS.warning}>{labels?.low} {thresholds.low}%</text>}
+          {!compact && <text x={W - pad.r} y={y(thresholds.low) + 13} textAnchor="end" fontSize="11" fontWeight="600" fill={COLORS.warning}>{labels?.low} {thresholds.low}%</text>}
         </g>
       )}
       {hi >= 0 && <line x1={x(hi)} x2={x(hi)} y1={pad.t} y2={h - pad.b} stroke="rgba(255,255,255,.35)" strokeDasharray="2 4" />}
@@ -90,9 +90,9 @@ export default function ForecastChart({ data, selected, onSelect, lang, labels, 
       {hi >= 0 && <circle cx={x(hi)} cy={y(indexed[hi].level)} r={compact ? 3.5 : 5} fill="#FFFFFF" stroke={COLORS.dark} strokeWidth="2" />}
       {!compact && (
         <>
-          <text x={x(hi)} y={h - 6} textAnchor="middle" fontSize="10" fontWeight="700" fill="#FFFFFF">{labels?.today}</text>
+          <text x={x(hi)} y={h - 6} textAnchor="middle" fontSize="11" fontWeight="700" fill="#FFFFFF">{labels?.today}</text>
           {indexed.filter((p) => p.kind === 'f' && (p.i - hi) % 4 === 0).map((p) => (
-            <text key={p.date} x={x(p.i)} y={h - 6} textAnchor="middle" fontSize="10" fill={COLORS.dim}>{fmtDay(p.date, lang, { day: 'numeric', month: 'short' })}</text>
+            <text key={p.date} x={x(p.i)} y={h - 6} textAnchor="middle" fontSize="11" fill={COLORS.dim}>{fmtDay(p.date, lang, { day: 'numeric', month: 'short' })}</text>
           ))}
         </>
       )}

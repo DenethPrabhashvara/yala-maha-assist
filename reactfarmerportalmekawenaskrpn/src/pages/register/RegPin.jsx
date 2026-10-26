@@ -124,10 +124,10 @@ export default function RegPin() {
           {WATER_FEATURES.map((f) => (f.type === 'tank'
             ? <ellipse key={f.id} cx={f.cx} cy={f.cy} rx={f.r} ry={f.r * 1.15} fill={COLORS.water} />
             : <line key={f.id} x1={f.x1} y1={f.y1} x2={f.x2} y2={f.y2} stroke={COLORS.water} strokeWidth="5" strokeLinecap="round" />))}
-          <text x="246" y="88" fill="#fff" fontSize="12" fontWeight="700" fontFamily="Inter Tight, system-ui, sans-serif">Palugaswewa</text>
-          <text x="262" y="103" fill="#fff" fontSize="12" fontWeight="700" fontFamily="Inter Tight, system-ui, sans-serif">Tank</text>
-          <text x="34" y="324" fill="#fff" fontSize="11" fontWeight="700" fontFamily="Inter Tight, system-ui, sans-serif">Kudawewa</text>
-          <text x="28" y="40" fill={COLORS.mapInk} fontSize="11" fontWeight="600" fontFamily="Inter Tight, system-ui, sans-serif">Horiwila</text>
+          <text x="246" y="88" fill="#fff" fontSize="12" fontWeight="700">Palugaswewa</text>
+          <text x="262" y="103" fill="#fff" fontSize="12" fontWeight="700">Tank</text>
+          <text x="34" y="324" fill="#fff" fontSize="11" fontWeight="700">Kudawewa</text>
+          <text x="28" y="40" fill={COLORS.mapInk} fontSize="11" fontWeight="600">Horiwila</text>
           {pin && near && (
             <>
               {near.feature.type === 'tank'

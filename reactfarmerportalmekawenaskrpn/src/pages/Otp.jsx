@@ -30,7 +30,7 @@ export default function Otp() {
       if (code === otpCode) {
         update({ user: { phone: pendingPhone }, otpCode: null });
         showToast('Signed in');
-        navigate(farm ? '/home' : '/home', { replace: true });
+        navigate(farm ? '/home' : '/register/identity', { replace: true });
       } else {
         setBusy(false);
         setError(t('wrongCode'));

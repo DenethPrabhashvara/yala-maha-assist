@@ -37,8 +37,21 @@ export function PrimaryBtn({ children, to, onClick, disabled, icon = 'arrow', ty
   return <button type={type} className={cls} onClick={onClick} disabled={disabled}>{content}</button>;
 }
 
+// Standard iOS-style status: a tinted symbol followed by the word, no background block.
+const STATUS = {
+  safe: ['ok', 'checkCircle'], stable: ['ok', 'checkCircle'], fixed: ['ok', 'checkCircle'],
+  watch: ['warn', 'warn'], low: ['warn', 'warn'], lowWater: ['warn', 'warn'], inProgress: ['warn', 'clock'],
+  critical: ['danger', 'stop'], spill: ['danger', 'stop'],
+  received: ['info', 'inbox'],
+};
+
+export function StatusLabel({ status, children }) {
+  const [tone, icon] = STATUS[status] || ['info', 'info'];
+  return <span className={`status-label sl-${tone}`}><Icon name={icon} size={16} stroke={2.4} />{children}</span>;
+}
+
 export function StatusPill({ status, t }) {
-  return <span className={`status-pill s-${status}`}><span className="sp-dot" />{t(status)}</span>;
+  return <StatusLabel status={status}>{t(status)}</StatusLabel>;
 }
 
 export function LangSwitch({ compact }) {
@@ -66,14 +79,16 @@ export function LangSwitch({ compact }) {
   );
 }
 
-export function StepHeader({ step, total = 4, title, backTo, closeTo, right }) {
+export function StepHeader({ step, total = 4, title, backTo, closeTo, onClose, closeLabel = 'Close', right }) {
   const { t } = useApp();
   const navigate = useNavigate();
   const done = Math.floor(step);
   return (
     <>
       <div className="row gap10">
-        {closeTo
+        {onClose
+          ? <IconBtn icon="close" label={closeLabel} onClick={onClose} />
+          : closeTo
           ? <IconBtn icon="close" label="Close" to={closeTo} />
           : <IconBtn icon="back" label={t('back')} onClick={() => (backTo ? navigate(backTo) : navigate(-1))} />}
         <div className="grow center fw600 f15">{title || t('registerFarm')}</div>
@@ -93,17 +108,18 @@ export function BottomNav() {
   const items = [
     { to: '/home', icon: 'home', label: t('home') },
     { to: '/water', icon: 'drop', label: t('water') },
-    { to: '/report', icon: 'plus', label: t('report'), center: true },
+    { to: '/report', icon: 'pencil', label: t('report') },
     { to: '/fields', icon: 'map', label: t('fields') },
     { to: '/profile', icon: 'user', label: t('profile') },
   ];
+  // Every item is a section people navigate to; the bar never carries actions.
   return (
     <nav className="bottom-nav" aria-label="Main">
       {items.map((it) => (
-        <NavLink key={it.to} to={it.to} aria-label={it.label}
-          className={({ isActive }) => `bn-item ${it.center ? 'center' : ''} ${isActive ? 'active' : ''}`}>
-          <Icon name={it.icon} size={it.center ? 26 : 22} stroke={it.center ? 2.4 : 2} />
-          {!it.center && <span className="bn-label">{it.label}</span>}
+        <NavLink key={it.to} to={it.to}
+          className={({ isActive }) => `bn-item ${isActive ? 'active' : ''}`}>
+          <Icon name={it.icon} size={22} stroke={2} />
+          <span className="bn-label">{it.label}</span>
         </NavLink>
       ))}
     </nav>
