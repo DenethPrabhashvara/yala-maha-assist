@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { maskPhone, useApp } from '../state/AppContext.jsx';
-import { IconBtn, PrimaryBtn } from '../components/UI.jsx';
+import { PrimaryBtn, StatusLabel } from '../components/UI.jsx';
 import Icon from '../components/Icon.jsx';
 import Sheet from '../components/Sheet.jsx';
 import { CANAL_SPOTS, ISSUE_TYPES } from '../data.js';
@@ -39,7 +39,6 @@ export default function Report() {
   return (
     <div className="screen">
       <div className="row gap10">
-        <IconBtn icon="back" label={t('back')} to="/home" />
         <div className="grow" />
         <button type="button" className="chip-dark btn" onClick={() => setListOpen(true)}>{t('myReports')} ({reports.length})</button>
       </div>
@@ -117,7 +116,7 @@ export default function Report() {
                 <div className="f15 fw600">{label(r.type)} · {r.id}</div>
                 <div className="f13 muted ellipsis">{r.spot} · {r.when}</div>
               </div>
-              <span className={`status-pill r-${r.status}`}>{t(r.status)}</span>
+              <StatusLabel status={r.status}>{t(r.status)}</StatusLabel>
             </div>
           ))}
         </div>
