@@ -5,7 +5,7 @@ import { PrimaryBtn, StepHeader } from '../../components/UI.jsx';
 import Icon from '../../components/Icon.jsx';
 
 export default function RegIdentity() {
-  const { t, draft, update, user } = useApp();
+  const { t, draft, update, user, farm, logout } = useApp();
   const navigate = useNavigate();
   const [touched, setTouched] = useState(false);
   const set = (patch) => update((s) => ({ draft: { ...s.draft, ...patch } }));
@@ -20,7 +20,10 @@ export default function RegIdentity() {
 
   return (
     <div className="screen">
-      <StepHeader step={1} closeTo="/home" />
+      {/* Registration is required, so a farmer without a farm can only leave by signing out. */}
+      {farm
+        ? <StepHeader step={1} closeTo="/home" />
+        : <StepHeader step={1} closeLabel={t('logout')} onClose={() => { logout(); navigate('/login', { replace: true }); }} />}
       <div>
         <div className="eyebrow">{t('step')} 1 · {t('aboutYou')}</div>
         <h1 className="h1">{t('whoOwns')}</h1>

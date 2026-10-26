@@ -79,14 +79,16 @@ export function LangSwitch({ compact }) {
   );
 }
 
-export function StepHeader({ step, total = 4, title, backTo, closeTo, right }) {
+export function StepHeader({ step, total = 4, title, backTo, closeTo, onClose, closeLabel = 'Close', right }) {
   const { t } = useApp();
   const navigate = useNavigate();
   const done = Math.floor(step);
   return (
     <>
       <div className="row gap10">
-        {closeTo
+        {onClose
+          ? <IconBtn icon="close" label={closeLabel} onClick={onClose} />
+          : closeTo
           ? <IconBtn icon="close" label="Close" to={closeTo} />
           : <IconBtn icon="back" label={t('back')} onClick={() => (backTo ? navigate(backTo) : navigate(-1))} />}
         <div className="grow center fw600 f15">{title || t('registerFarm')}</div>

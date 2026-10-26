@@ -30,6 +30,15 @@ function RequireAuth({ children }) {
   return children;
 }
 
+// Farm registration is required: signed-in farmers without a farm are sent to the registration flow.
+function RequireFarm({ children }) {
+  const { farm } = useApp();
+  if (!farm) return <Navigate to="/register/identity" replace />;
+  return children;
+}
+
+const farmOnly = (page) => <RequireAuth><RequireFarm>{page}</RequireFarm></RequireAuth>;
+
 const NAV_ROUTES = ['/home', '/water', '/report', '/fields', '/profile', '/alerts', '/forecast'];
 
 export default function App() {
@@ -50,13 +59,13 @@ export default function App() {
               <Route path="/language" element={<Language />} />
               <Route path="/login" element={<Login />} />
               <Route path="/otp" element={<Otp />} />
-              <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
-              <Route path="/water" element={<RequireAuth><Water /></RequireAuth>} />
-              <Route path="/report" element={<RequireAuth><Report /></RequireAuth>} />
-              <Route path="/forecast" element={<RequireAuth><Forecast /></RequireAuth>} />
-              <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
-              <Route path="/fields" element={<RequireAuth><Fields /></RequireAuth>} />
-              <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+              <Route path="/home" element={farmOnly(<Home />)} />
+              <Route path="/water" element={farmOnly(<Water />)} />
+              <Route path="/report" element={farmOnly(<Report />)} />
+              <Route path="/forecast" element={farmOnly(<Forecast />)} />
+              <Route path="/alerts" element={farmOnly(<Alerts />)} />
+              <Route path="/fields" element={farmOnly(<Fields />)} />
+              <Route path="/profile" element={farmOnly(<Profile />)} />
               <Route path="/register" element={<Navigate to="/register/identity" replace />} />
               <Route path="/register/identity" element={<RequireAuth><RegIdentity /></RequireAuth>} />
               <Route path="/register/crops" element={<RequireAuth><RegCrops /></RequireAuth>} />
