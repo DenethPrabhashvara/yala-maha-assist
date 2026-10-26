@@ -13,6 +13,8 @@ export default function RegReview() {
   const [busy, setBusy] = useState(false);
   const info = nicInfo(draft.nic);
   if (!info.valid) return <Navigate to="/register/identity" replace />;
+  // The farm location is required; it must come from the phone's GPS.
+  if (draft.pin?.lat == null || !draft.located) return <Navigate to="/register/pin" replace />;
 
   const total = draft.crops.reduce((s, c) => s + (Number(c.acres) || 0), 0);
 
@@ -27,9 +29,6 @@ export default function RegReview() {
         alerts: [{ id: `f${Date.now()}`, kind: 'farm', title: `Farm registered · ${id}`, body: `${total} acres added to the Mahaweli B irrigation list.`, when: 'Just now', read: false }, ...alerts],
       });
       showSms(`Yala-Maha Assist: Registration complete. Your Farm ID is ${id}. Keep this SMS for the Agrarian Service Centre.`);
-      if (draft.remindLater && !draft.pin) {
-        setTimeout(() => showSms('Reminder: when you are home, open Yala-Maha Assist and pin your farm on the canal map.'), 6500);
-      }
       navigate('/register/done', { replace: true, state: { id } });
     }, 1200);
   };
@@ -66,7 +65,7 @@ export default function RegReview() {
 
       <div className="card row-card static">
         <div className="icon-tile mint"><Icon name="pin" size={22} color={COLORS.pin} /></div>
-        <div className="grow"><div className="f12 muted">{t('location')}</div><div className="f15 fw600">{draft.nearest || (draft.remindLater ? `${t('notPinned')} · SMS reminder on` : t('notPinned'))}</div></div>
+        <div className="grow"><div className="f12 muted">{t('location')}</div><div className="f15 fw600">{draft.nearest}</div></div>
         <Link to="/register/pin" className="f14 fw600 ink">{t('edit')}</Link>
       </div>
 

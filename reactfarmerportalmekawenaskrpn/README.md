@@ -10,7 +10,12 @@ npm run dev       # http://localhost:5173
 npm run build     # production build in dist/
 npm run preview   # serve the build
 npm run dev -- --host # to test on lan un different devices
+npm run dev:phone # https on the LAN, needed to test GPS / farm registration on a phone
 ```
+
+Phones only allow GPS on `https://` (or `localhost`), and farm registration needs GPS. `npm run dev:phone` serves
+`https://<your-pc-ip>:5173` with a self-signed certificate: open the **Network** address on the phone, tap
+**Advanced → Proceed** on the certificate warning once, then allow location.
 
 On a desktop browser the app shows inside a phone frame; on a phone it fills the screen. It can be added to the home screen (PWA manifest included).
 
@@ -31,7 +36,7 @@ On a desktop browser the app shows inside a phone frame; on a phone it fills the
 | `/profile` | Language, SMS alerts switch, help contacts, log out |
 | `/register/identity` | Stage 1 — name, NIC (old 9+V / new 12-digit, masked), verified phone |
 | `/register/crops` | Stage 2a — multiple crops, category → type → variety, acres, yield + unit, running total |
-| `/register/pin` | Stage 2b — Google satellite map with "Use my location" (GPS), tap/drag pin, village search, distance to nearest tank; falls back to the schematic canal map without a key. Skip or SMS reminder |
+| `/register/pin` | Stage 2b (required) — asks for location access on open; satellite map (free Leaflet map, or Google with a key), drag the pin to adjust, village search, distance to nearest tank. Continue is disabled until GPS gives a position; offline shows a "connect to the internet" retry card |
 | `/register/water` | Stage 2c — where the field gets water: tank (which one), canal, river, agro-well or rain only. Pre-selects the tank/canal nearest the pin |
 | `/register/review` | Stage 3 — summary + agrarian consent |
 | `/register/done` | Stage 4 — Farm ID |
@@ -73,19 +78,34 @@ the app shows sample predictions labelled "Sample data".
 The forecast drives: the Home "Next 14 days" card, the forecast screen, and the risk label
 ("May reach spill level" if the upper range touches the spill line, "May fall low" if the lower range reaches the low line).
 
-## Google Maps (farm pin)
+## Maps (farm pin)
+
+The pin step picks a map in this order:
+
+1. **Google Maps**, if `VITE_GOOGLE_MAPS_API_KEY` is set (see below).
+2. **Free map (default)**: Leaflet with Esri World Imagery satellite tiles, OpenStreetMap street tiles and
+   OpenStreetMap Nominatim village search (`src/components/LeafletFarmMap.jsx`). No account, key or billing.
+   Keep the map attribution visible, and keep search on submit only: Nominatim allows at most 1 request per
+   second and no search-as-you-type. For heavy production traffic, move to a paid or self-hosted tile/search provider.
+With no internet the step shows a retry card (and retries by itself when the connection returns).
+
+**Location is required.** The step requests GPS as soon as it opens and Continue stays disabled until the phone
+returns a position (`draft.located`); the farmer can then drag the pin onto the exact field. Browsers only allow
+GPS on `https://` or `localhost`, so test registration on a phone over HTTPS (plain `http://192.168.x.x:5173` blocks it).
+
+### Optional: Google Maps
 
 1. In Google Cloud Console enable **Maps JavaScript API** (and **Geocoding API** for the village search box).
 2. Create an API key, restrict it to your site (HTTP referrers, e.g. `http://localhost:5173/*` and your domain).
 3. Put it in `.env` as `VITE_GOOGLE_MAPS_API_KEY=...` and restart `npm run dev`.
 
 The pins use Advanced Markers, which need a Map ID. `DEMO_MAP_ID` is used by default; set `VITE_GOOGLE_MAPS_MAP_ID` for production.
-Without a key, or if the key is rejected, the pin step shows the offline schematic map instead.
+If the key is rejected, the pin step falls back to the free map.
 GPS ("Use my location") needs HTTPS on a real phone (localhost is fine for testing).
 
 Tanks appear on the map and count for "nearest tank" only if they have `lat`/`lon` in `TANKS` (`src/data.js`). Only Horabora Wewa has coordinates now: add the others.
 
-The saved pin is `draft.pin = { lat, lng, accuracy? }` (schematic map: `{ x, y }`). The water answer is `draft.water = { source, name }`, where `source` is one of `tank | canal | river | well | rain`.
+The saved pin is `draft.pin = { lat, lng, accuracy? }`, with `draft.located = true` once GPS has succeeded. The water answer is `draft.water = { source, name }`, where `source` is one of `tank | canal | river | well | rain`.
 
 ## Colours
 

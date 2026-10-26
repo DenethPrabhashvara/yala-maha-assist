@@ -96,23 +96,6 @@ export const CANAL_SPOTS = [
   'Maradankadawala distributory',
 ];
 
-// Schematic map (viewBox 340 x 380). 1 unit ≈ 5 m.
-export const MAP_SCALE_M = 5;
-export const WATER_FEATURES = [
-  { id: 'palu', name: 'Palugaswewa Tank', type: 'tank', cx: 270, cy: 92, r: 58 },
-  { id: 'kuda', name: 'Kudawewa Tank', type: 'tank', cx: 64, cy: 320, r: 46 },
-  { id: 'feeder', name: 'Palugaswewa Feeder Canal', type: 'canal', x1: 272, y1: 150, x2: 272, y2: 380 },
-  { id: 'd4', name: 'Channel D-4', type: 'canal', x1: 150, y1: 276, x2: 272, y2: 276 },
-];
-
-export const LANDMARKS = [
-  { name: 'Palugaswewa Tank', x: 230, y: 175 },
-  { name: 'Kudawewa Tank', x: 110, y: 300 },
-  { name: 'Palugaswewa Feeder Canal', x: 245, y: 250 },
-  { name: 'Horiwila Village Center', x: 60, y: 60 },
-  { name: 'Maradankadawala Valley', x: 170, y: 140 },
-];
-
 export const SEED_REPORTS = [
   { id: 'CR-1987', type: 'gate', spot: 'Palugaswewa feeder · gate 7', status: 'inProgress', when: '12 Oct', note: 'Gate wheel stuck, cannot close.' },
   { id: 'CR-1902', type: 'leak', spot: 'Kudawewa left bank canal', status: 'fixed', when: '28 Sep', note: 'Water leaking under bund.' },

@@ -4,10 +4,11 @@ import Icon from './Icon.jsx';
 import { useApp } from '../state/AppContext.jsx';
 import { LANGS } from '../i18n.js';
 
-export function Logo({ size = 48, dark = true }) {
+// Yala Maha emblem (water drop + rice stalk), on its own off-white tile so it reads on light and dark screens.
+export function Logo({ size = 48 }) {
   return (
-    <span className="logo" style={{ width: size, height: size, background: dark ? 'var(--ink)' : 'var(--accent)' }}>
-      <Icon name="leaf" size={size * 0.5} color={dark ? 'var(--accent)' : 'var(--ink)'} stroke={2.2} />
+    <span className="logo" style={{ width: size, height: size }}>
+      <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" width={size} height={size} draggable="false" />
     </span>
   );
 }
