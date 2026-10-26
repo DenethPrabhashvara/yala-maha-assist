@@ -1,10 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { translate } from '../i18n.js';
 import { SEED_ALERTS, SEED_REPORTS } from '../data.js';
-import * as auth from '../api/auth.js';
 
 const STORAGE_KEY = 'yma-state-v1';
-const VERIFIED_PHONE_MS = 15 * 60 * 1000; // matches VERIFIED_PHONE_TTL_SECONDS on the API
 
 function load() {
   try {
@@ -38,7 +36,7 @@ export const emptyDraft = () => ({ name: '', nic: '', crops: [newCrop()], pin: n
 const defaults = {
   lang: 'en',
   onboarded: false,
-  user: null, // { phone, farmerId? } — farmerId once the API has issued a session
+  user: null, // { phone }
   farm: null, // registered farm
   draft: emptyDraft(),
   reports: SEED_REPORTS,
@@ -49,14 +47,7 @@ const defaults = {
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [state, setState] = useState(() => {
-    const s = { ...defaults, ...(load() || {}) };
-    // A signed-in user needs an API session (farmerId), or a phone verified recently enough to finish registering.
-    if (s.user && !s.user.farmerId && !(Date.now() - (s.user.verifiedAt || 0) < VERIFIED_PHONE_MS)) {
-      return { ...s, user: null, farm: null };
-    }
-    return s;
-  });
+  const [state, setState] = useState(() => ({ ...defaults, ...(load() || {}) }));
   const [toast, setToast] = useState(null);
   const [sms, setSms] = useState(null);
   const toastTimer = useRef();
@@ -64,24 +55,6 @@ export function AppProvider({ children }) {
 
   useEffect(() => { save(state); }, [state]);
   useEffect(() => { document.documentElement.lang = state.lang; }, [state.lang]);
-
-  // Restore the API session on load: the refresh cookie gives a new access token,
-  // and the profile keeps the local farm in sync. Signed out if the session is gone.
-  const farmerId = state.user?.farmerId;
-  useEffect(() => {
-    if (!farmerId) return;
-    let cancelled = false;
-    auth.getProfile()
-      .then((farmer) => {
-        if (cancelled || !farmer) return;
-        setState((s) => ({ ...s, farm: auth.farmFromProfile(farmer, s.farm) }));
-      })
-      .catch((err) => {
-        if (cancelled || err.status === 0 || err.status >= 500) return; // offline / server down: keep cached data
-        setState((s) => ({ ...s, user: null, farm: null }));
-      });
-    return () => { cancelled = true; };
-  }, [farmerId]);
 
   const update = useCallback((patch) => setState((s) => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) })), []);
 
@@ -102,11 +75,8 @@ export function AppProvider({ children }) {
 
   const value = useMemo(() => ({
     ...state, update, t, toast, showToast, sms, showSms, dismissSms: () => setSms(null),
-    logout: () => {
-      auth.logout().catch(() => {});
-      setState((s) => ({ ...s, user: null, farm: null, draft: emptyDraft() }));
-    },
-    resetAll: () => { auth.logout().catch(() => {}); setState({ ...defaults }); },
+    logout: () => setState((s) => ({ ...s, user: null })),
+    resetAll: () => { setState({ ...defaults }); },
   }), [state, update, t, toast, showToast, sms, showSms]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

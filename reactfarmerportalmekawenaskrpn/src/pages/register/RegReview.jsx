@@ -6,12 +6,9 @@ import Icon from '../../components/Icon.jsx';
 import { CROP_CATALOG } from '../../data.js';
 import { waterLabel } from './RegWater.jsx';
 import { COLORS } from '../../theme.js';
-import { farmFromProfile, register } from '../../api/auth.js';
-
-const round6 = (v) => Math.round(v * 1e6) / 1e6;
 
 export default function RegReview() {
-  const { t, draft, update, user, showSms, showToast, alerts, logout } = useApp();
+  const { t, draft, update, user, showSms, alerts } = useApp();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const info = nicInfo(draft.nic);
@@ -21,30 +18,15 @@ export default function RegReview() {
 
   const total = draft.crops.reduce((s, c) => s + (Number(c.acres) || 0), 0);
 
-  const saveEdit = () => {
-    update((s) => ({ farm: { ...s.farm, ...draft, id: s.farm.id, farmerId: s.farm.farmerId }, draft: emptyDraft() }));
-    showToast('Farm details updated');
-    navigate('/fields', { replace: true });
-  };
-
-  const submit = async () => {
-    if (editing) { saveEdit(); return; }
+  const submit = () => {
     setBusy(true);
-    const main = draft.crops.reduce((a, c) => ((Number(c.acres) || 0) > (Number(a.acres) || 0) ? c : a), draft.crops[0]);
-    const geo = draft.pin?.lat != null ? draft.pin : null;
-    let farmer;
-    try {
-      farmer = await register({
-        phone: user.phone,
-        full_name: draft.name.trim(),
-        nic: draft.nic.trim(),
-        address: draft.address.trim(),
-        district: draft.district,
-        division: draft.division?.trim() || undefined,
-        farm_latitude: geo ? round6(geo.lat) : undefined,
-        farm_longitude: geo ? round6(geo.lng) : undefined,
-        land_acres: Math.round(total * 100) / 100,
-        primary_crop: main ? `${main.type} · ${main.variety.split(' (')[0]}` : undefined,
+    setTimeout(() => {
+      const id = draft.id || `FAR-${String(16 + Math.floor(Math.random() * 80)).padStart(3, '0')}`;
+      const farm = { ...draft, id, phone: user.phone, registeredAt: Date.now() };
+      update({
+        farm,
+        draft: emptyDraft(),
+        alerts: [{ id: `f${Date.now()}`, kind: 'farm', title: `Farm registered · ${id}`, body: `${total} acres added to the Mahaweli B irrigation list.`, when: 'Just now', read: false }, ...alerts],
       });
       showSms(`Yala-Maha Assist: Registration complete. Your Farm ID is ${id}. Keep this SMS for the Agrarian Service Centre.`);
       navigate('/register/done', { replace: true, state: { id } });
@@ -62,9 +44,8 @@ export default function RegReview() {
       <div className="card">
         <div className="row between"><span className="label">{t('farmer')}</span><Link to="/register/identity" className="f14 fw600 ink">{t('edit')}</Link></div>
         <div className="f18 fw600">{draft.name}</div>
-        <div className="f14 muted lh">{draft.address}<br />{[draft.division, draft.district].filter(Boolean).join(', ')}</div>
         <div className="grid2 f14">
-          <div className="soft-tile"><div className="f12 muted">NIC</div><div className="fw600">{info.masked || '••••••'}</div></div>
+          <div className="soft-tile"><div className="f12 muted">NIC</div><div className="fw600">{info.masked}</div></div>
           <div className="soft-tile"><div className="f12 muted">{t('mobile')}</div><div className="fw600">{maskPhone(user.phone)}</div></div>
         </div>
       </div>

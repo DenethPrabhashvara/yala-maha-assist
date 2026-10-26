@@ -132,11 +132,3 @@ export const RIVERS = ['Yan Oya', 'Mahaweli Ganga'];
 
 // Google map defaults (Mahaweli B). Tanks with lat/lon appear on the map and are used for "nearest tank".
 export const MAP_CENTER = { lat: 7.364212, lng: 81.02131 };
-
-// Administrative districts of Sri Lanka (farmer registration).
-export const DISTRICTS = [
-  'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo', 'Galle', 'Gampaha', 'Hambantota',
-  'Jaffna', 'Kalutara', 'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala', 'Mannar', 'Matale',
-  'Matara', 'Monaragala', 'Mullaitivu', 'Nuwara Eliya', 'Polonnaruwa', 'Puttalam', 'Ratnapura',
-  'Trincomalee', 'Vavuniya',
-];

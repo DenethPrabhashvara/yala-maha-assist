@@ -3,28 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import { normalizePhone, useApp } from '../state/AppContext.jsx';
 import { Aerial, LangSwitch, Logo, PrimaryBtn } from '../components/UI.jsx';
 import { PHOTOS } from '../data.js';
-import { sendOtp } from '../api/auth.js';
+
+export function makeCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
 export default function Login() {
-  const { t, update, pendingPhone } = useApp();
+  const { t, update, showSms, pendingPhone } = useApp();
   const navigate = useNavigate();
   const [value, setValue] = useState(pendingPhone ? `0${pendingPhone.slice(3)}` : '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const submit = async (e) => {
+  const submit = (e) => {
     e.preventDefault();
     const phone = normalizePhone(value);
     if (!phone) { setError(t('invalidPhone')); return; }
     setBusy(true);
-    try {
-      await sendOtp(phone);
-      update({ pendingPhone: phone, otpSentAt: Date.now() });
+    const code = makeCode();
+    // In production: POST /auth/otp → Text.lk SMS gateway
+    setTimeout(() => {
+      update({ pendingPhone: phone, otpCode: code, otpSentAt: Date.now() });
+      showSms(`Your Yala-Maha Assist code is ${code}. It expires in 5 minutes. Do not share it.`);
       navigate('/otp');
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
+    }, 700);
   };
 
   return (
