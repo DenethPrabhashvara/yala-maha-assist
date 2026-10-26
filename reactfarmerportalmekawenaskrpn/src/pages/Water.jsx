@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useApp } from '../state/AppContext.jsx';
 import { Link } from 'react-router-dom';
 import { IconBtn } from '../components/UI.jsx';
@@ -7,47 +7,26 @@ import Icon from '../components/Icon.jsx';
 import { KAPAWA, TANKS } from '../data.js';
 import { COLORS } from '../theme.js';
 
+// Leaflet (~150 KB) only downloads when this page opens.
+const WaterMap = lazy(() => import('../components/WaterMap.jsx'));
+
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function Water() {
-  const { t, showToast } = useApp();
-  const [zoom, setZoom] = useState(1);
+  const { t, showToast, farm } = useApp();
   const [tankId, setTankId] = useState(TANKS[0].id);
   const [remind, setRemind] = useState(false);
   const tank = TANKS.find((x) => x.id === tankId);
 
   return (
     <div className="water-screen">
-      <div className="map-aerial" style={{ transform: `scale(${zoom})` }} aria-hidden="true">
-        <div className="f f1" style={{ left: -20, top: 120, width: 150, height: 110 }} />
-        <div className="f f2" style={{ left: 250, top: 90, width: 170, height: 120 }} />
-        <div className="f f2" style={{ left: 20, top: 330, width: 130, height: 100 }} />
-        <div className="f f1" style={{ left: 280, top: 300, width: 140, height: 110 }} />
-        <div className="m-tank" />
-        <div className="m-canal c1" />
-        <div className="m-canal c2" />
-        <div className="m-road" />
-        <div className="m-mine" />
-      </div>
-
-      <div className="map-label" style={{ left: 146, top: 292 }}>
-        <span className="ml-ico"><Icon name="drop" size={18} color="var(--accent)" stroke={2.2} /></span>
-        <b>{t('myPlot')}</b>
-        <small>{t('waterArriving')} · 64%</small>
-      </div>
-      <span className="map-chip" style={{ left: 240, top: 30 }}>{TANKS[0].name} · {TANKS[0].percent}%</span>
-      <span className="map-chip" style={{ left: 18, top: 200 }}><i style={{ background: COLORS.water }} />D-4 · {t('flowing')}</span>
-      <span className="map-chip" style={{ left: 236, top: 400 }}><i style={{ background: 'var(--amber)' }} />Gate 7 · {t('closed')}</span>
+      <Suspense fallback={<div className="water-map" />}>
+        <WaterMap pin={farm?.pin} tankName={farm?.water?.source === 'tank' ? farm.water.name : null} t={t} />
+      </Suspense>
 
       <div className="map-top">
         <IconBtn icon="back" label={t('back')} to="/home" variant="glass" />
         <div className="map-title">{t('tankCanals')}</div>
-      </div>
-
-      <div className="map-tools">
-        <button type="button" className="icon-btn glass" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))}><Icon name="plus" size={20} /></button>
-        <button type="button" className="icon-btn glass" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, z - 0.15))}><span className="f22">−</span></button>
-        <button type="button" className="icon-btn accent" aria-label="Show my farm" onClick={() => setZoom(1.3)}><Icon name="target" size={20} /></button>
       </div>
 
       <div className="water-sheet">

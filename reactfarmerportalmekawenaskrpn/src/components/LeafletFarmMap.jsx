@@ -9,7 +9,8 @@ import { MAPPED_TANKS, PIN_SVG } from './GoogleFarmMap.jsx';
 // Satellite: Esri World Imagery (+ Esri place labels). Map: OpenStreetMap. Search: OSM Nominatim.
 // Usage rules: keep the attribution visible; Nominatim allows at most 1 search per second
 // and no search-as-you-type, so we only search when the farmer presses Search.
-const LAYERS = {
+// Fresh tile layers per map (a Leaflet layer can only belong to one map at a time).
+export const makeBaseLayers = () => ({
   satellite: [
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
@@ -23,10 +24,10 @@ const LAYERS = {
       maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }),
   ],
-};
+});
 
-const pinIcon = L.divIcon({ className: 'lf-pin', html: PIN_SVG, iconSize: [40, 52], iconAnchor: [20, 48] });
-const tankIcon = (name) => L.divIcon({ className: 'lf-tank', html: `<span class="gm-tank-label">${name}</span>`, iconSize: [0, 0] });
+export const pinIcon = L.divIcon({ className: 'lf-pin', html: PIN_SVG, iconSize: [40, 52], iconAnchor: [20, 48] });
+export const tankIcon = (name, mine = false) => L.divIcon({ className: 'lf-tank', html: `<span class="gm-tank-label${mine ? ' mine' : ''}">${name}</span>`, iconSize: [0, 0] });
 
 /**
  * Satellite map: tap or drag the pin onto the field, or use the phone's GPS.
@@ -38,6 +39,8 @@ export default function LeafletFarmMap({ pin, onPin, onLocate, onFail, autoLocat
   const markerRef = useRef();
   const onPinRef = useRef(onPin);
   onPinRef.current = onPin;
+  const layersRef = useRef(null);
+  if (!layersRef.current) layersRef.current = makeBaseLayers();
   const [ready, setReady] = useState(false);
   const [base, setBase] = useState('satellite');
   const [locating, setLocating] = useState(false);
@@ -56,7 +59,7 @@ export default function LeafletFarmMap({ pin, onPin, onLocate, onFail, autoLocat
     });
     L.control.zoom({ position: 'topright' }).addTo(map);
     map.attributionControl.setPrefix(false);
-    LAYERS.satellite.forEach((l) => l.addTo(map));
+    layersRef.current.satellite.forEach((l) => l.addTo(map));
     MAPPED_TANKS.forEach((tk) => L.marker([tk.pos.lat, tk.pos.lng], { icon: tankIcon(tk.name), interactive: false, keyboard: false }).addTo(map));
 
     const marker = L.marker([0, 0], { icon: pinIcon, draggable: true, title: 'Your field', autoPan: true });
@@ -88,8 +91,8 @@ export default function LeafletFarmMap({ pin, onPin, onLocate, onFail, autoLocat
   const switchBase = (next) => {
     const map = mapRef.current;
     if (!map || next === base) return;
-    LAYERS[base].forEach((l) => map.removeLayer(l));
-    LAYERS[next].forEach((l) => l.addTo(map));
+    layersRef.current[base].forEach((l) => map.removeLayer(l));
+    layersRef.current[next].forEach((l) => l.addTo(map));
     setBase(next);
   };
 
