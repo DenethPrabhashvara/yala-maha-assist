@@ -1,46 +1,34 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { greetingKey, maskPhone, useApp } from '../state/AppContext.jsx';
-import { Aerial, Card, IconBtn, LangSwitch, Logo, StatusPill } from '../components/UI.jsx';
+import { Aerial, Card, IconBtn, LangSwitch, Logo, StatusLabel, StatusPill } from '../components/UI.jsx';
 import Icon from '../components/Icon.jsx';
 import Sheet from '../components/Sheet.jsx';
 import { CROP_CATALOG, FLOOD, FORECAST, FORECAST_ADVICE, KAPAWA, PHOTOS, TANKS } from '../data.js';
 import TankPicker from '../components/TankPicker.jsx';
-import ForecastChart, { fmtDay } from '../components/ForecastChart.jsx';
 import { useTankForecast } from '../api/useTankForecast.js';
 import { summarize } from '../api/forecast.js';
 import { COLORS } from '../theme.js';
 
-const RISK_PILL = { spill: ['s-critical', 'spillRisk'], lowWater: ['s-watch', 'lowRisk'], stable: ['s-safe', 'stable'] };
+// Standard weather symbols, tinted like Apple Weather (see .wx-* in styles.css).
+const WX_ICON = { sun: 'sun', cloud: 'cloudSun', rain: 'rain' };
+const RISK_KEY ={ spill: 'spillRisk', lowWater: 'lowRisk', stable: 'stable' };
 
-function ForecastCard({ tankId, t }) {
-  const { lang } = useApp();
+// One-line 14-day outlook inside the tank card; the full chart lives on /forecast.
+function ForecastRow({ tankId, t }) {
   const { data } = useTankForecast(tankId);
   const s = data ? summarize(data) : null;
   return (
-    <Link to={`/forecast?tank=${tankId}`} className="card card-dark link-card forecast-mini">
-      <div className="row between gap8">
-        <div className="f15 fw600 row gap8"><Icon name="spark" size={18} color="var(--accent)" />{t('outlook14')}</div>
-        {s && <span className={`status-pill ${RISK_PILL[s.risk][0]}`}>{t(RISK_PILL[s.risk][1])}</span>}
-      </div>
-      {data && s ? (
-        <>
-          <div className="row end gap12">
-            <div className="big-num" style={{ fontSize: 48, color: '#fff' }}>{Math.round(s.last.level)}<span>%</span></div>
-            <div className="f13 dim lh" style={{ paddingBottom: 6 }}>
-              {t('in14')} · {s.trend >= 0 ? '+' : ''}{s.trend}%<br />
-              {t('peak')} {Math.round(s.peak.level)}% · {fmtDay(s.peak.date, lang)}
-            </div>
-          </div>
-          <ForecastChart data={data} lang={lang} compact labels={{ aria: `Predicted ${Math.round(s.last.level)}% in 14 days` }} />
-          <div className="row between f13">
-            <span className="dim">{data.source === 'model' ? `${t('liveModel')} · ${data.modelVersion}` : t('sampleData')}</span>
-            <span className="fw600 row gap6" style={{ color: 'var(--accent)' }}>{t('seeForecast')}<Icon name="arrow" size={14} stroke={2.4} /></span>
-          </div>
-        </>
-      ) : (
-        <div className="f14 dim" style={{ minHeight: 120 }}>{t('loadingForecast')}</div>
-      )}
+    <Link to={`/forecast?tank=${tankId}`} className="forecast-row">
+      <span className="icon-tile blue sm-tile"><Icon name="spark" size={18} /></span>
+      <span className="grow min0">
+        <span className="block f15 fw600">{t('outlook14')}</span>
+        <span className="block f13 muted">
+          {s ? `${Math.round(s.last.level)}% ${t('in14')} · ${s.trend >= 0 ? '+' : ''}${s.trend}%` : t('loadingForecast')}
+        </span>
+      </span>
+      {s && <StatusLabel status={s.risk}>{t(RISK_KEY[s.risk])}</StatusLabel>}
+      <Icon name="chevron" size={18} stroke={2.2} />
     </Link>
   );
 }
@@ -61,12 +49,12 @@ export function FieldCards({ farm, t }) {
         const needsWater = i % 2 === 1;
         return (
           <Link to="/fields" key={c.id} className="field-card">
-            <Aerial variant={needsWater ? 'a' : 'b'} height={110} photo={needsWater ? PHOTOS.harvest : PHOTOS.paddy}
-              tag={needsWater ? 'Needs water' : 'Good'} tagTone={needsWater ? 'amber' : ''} />
+            <Aerial variant={needsWater ? 'a' : 'b'} height={110} photo={needsWater ? PHOTOS.harvest : PHOTOS.paddy} />
             <div className="fc-foot">
               <div className="min0">
                 <div className="f15 fw600 ellipsis">{c.type.replace(/ \(.*\)/, '')} · {c.variety.split(' (')[0]}</div>
                 <div className="f12 muted">{c.acres} ac · {CROP_CATALOG[c.category]?.short || CROP_CATALOG[c.category]?.label}</div>
+                <StatusLabel status={needsWater ? 'watch' : 'safe'}>{needsWater ? 'Needs water' : 'Good'}</StatusLabel>
               </div>
               <span className="round-arrow"><Icon name="chevron" size={14} stroke={2.6} color="#fff" /></span>
             </div>
@@ -83,6 +71,8 @@ export default function Home() {
   const [updatedAt, setUpdatedAt] = useState(Date.now() - 20 * 60 * 1000);
   const [refreshing, setRefreshing] = useState(false);
   const [adviceOpen, setAdviceOpen] = useState(false);
+  const [dayIdx, setDayIdx] = useState(0);
+  const day = FORECAST[dayIdx];
   const tank = TANKS.find((x) => x.id === tankId);
   const unread = alerts.filter((a) => !a.read).length;
   const mins = Math.round((Date.now() - updatedAt) / 60000);
@@ -105,7 +95,7 @@ export default function Home() {
         <Logo size={48} />
         <LangSwitch compact />
         <div className="grow" />
-        <IconBtn icon="bell" label={`${t('alerts')} (${unread})`} to="/alerts" variant="dark" badge={unread > 0} />
+        <IconBtn icon="bell" label={`${t('alerts')} (${unread})`} to="/alerts" variant="plain" badge={unread > 0} />
         <Link to="/profile" className="avatar" aria-label={t('profile')}>{(farm?.name || 'F').split(' ').map((w) => w[0]).slice(0, 2).join('')}</Link>
       </header>
 
@@ -114,22 +104,21 @@ export default function Home() {
           <div className="f15 muted fw500">{t(greetingKey())}{firstName ? `, ${firstName}` : ''}</div>
           <h1 className="h1 xl">{t('farmOverview')}</h1>
         </div>
-        <button type="button" className={`chip-dark btn ${refreshing ? 'spinning' : ''}`} onClick={refresh} aria-label="Refresh readings">
+        <button type="button" className={`chip-white btn ${refreshing ? 'spinning' : ''}`} onClick={refresh} aria-label="Refresh readings">
           <Icon name="refresh" size={14} stroke={2.4} /> 25 Oct · Maha
         </button>
       </div>
 
       {/* Flood alert first — the most urgent question */}
-      <Card dark className="flood-card">
+      <Card className="flood-card">
         <div className="row gap10">
           <span className="warn-badge"><Icon name="warn" size={14} stroke={2.6} />{t('floodWatch').toUpperCase()} · {t('level')} {FLOOD.level} {t('of')} {FLOOD.maxLevel}</span>
           <div className="grow" />
-          <span className="f12" style={{ color: COLORS.dim }}>{FLOOD.issued}</span>
+          <span className="f12 muted">{FLOOD.issued}</span>
         </div>
-        <div className="f24 fw600 lh-tight">{FLOOD.title}</div>
-        <div className="grid2">
-          <div className="dark-tile"><div className="f12 dim">{t('expectedPeak')}</div><div className="f16 fw600">{FLOOD.peak}</div></div>
-          <div className="dark-tile"><div className="f12 dim">{t('riverGauge')}</div><div className="f16 fw600">{FLOOD.gauge} m <span className="amber">↑ {t('rising')}</span></div></div>
+        <div className="f22 fw600 lh-tight">{FLOOD.title}</div>
+        <div className="f14 muted lh">
+          {t('expectedPeak')} <b className="ink">{FLOOD.peak}</b> · {t('riverGauge')} <b className="ink">{FLOOD.gauge} m</b> <b className="warning-text">↑ {t('rising')}</b>
         </div>
         <ol className="steps">
           {FLOOD.steps.slice(0, 2).map((s, i) => <li key={s}><span className="num-badge">{i + 1}</span>{s}</li>)}
@@ -163,9 +152,8 @@ export default function Home() {
           <div><div className="muted">{t('spillAt')}</div><div className="f15 fw600">{tank.spill}%</div></div>
           <div><div className="muted">{t('updated')}</div><div className="f15 fw600">{mins < 1 ? t('justNow') : `${mins} ${t('minAgo')}`}</div></div>
         </div>
+        <ForecastRow tankId={tankId} t={t} />
       </Card>
-
-      <ForecastCard tankId={tankId} t={t} />
 
       <Link to="/water" className="card link-card">
         <div className="row between">
@@ -186,18 +174,26 @@ export default function Home() {
         </div>
       </Link>
 
-      <Card>
+      <Card className="weather-card">
         <div className="row between">
           <div className="f15 fw600">{t('rain3')}</div>
-          <span className="f13 muted">Horiwila</span>
+          <span className="f13 muted row gap6"><Icon name="pin" size={14} />Horiwila</span>
         </div>
-        <div className="grid3">
-          {FORECAST.map((f) => (
-            <div key={f.day} className={`fc-tile ${f.heavy ? 'heavy' : ''}`}>
-              <div className="f13 fw600">{f.day}</div>
-              <Icon name={f.icon} size={30} stroke={1.8} style={{ margin: '8px 0' }} />
-              <div className="f22 fw600">{f.mm} mm</div>
-            </div>
+        <div className="row gap12 weather-hero">
+          <span className={`wx wx-${day.icon}`}><Icon name={WX_ICON[day.icon]} size={88} stroke={1.5} /></span>
+          <div className="grow right">
+            <div className="weather-num">{day.mm}<span>mm</span></div>
+            <div className="f15 fw600 brand-text">{day.day}{day.heavy ? ' · ↑' : ''}</div>
+          </div>
+        </div>
+        <div className="day-strip" role="radiogroup" aria-label={t('rain3')}>
+          {FORECAST.map((f, i) => (
+            <button key={f.day} type="button" role="radio" aria-checked={i === dayIdx}
+              className={`day-chip ${i === dayIdx ? 'on' : ''}`} onClick={() => setDayIdx(i)}>
+              <span className="f13 fw600">{f.day}</span>
+              <span className={`wx wx-${f.icon}`}><Icon name={WX_ICON[f.icon]} size={30} stroke={2} /></span>
+              <span className="f15 fw600">{f.mm} mm</span>
+            </button>
           ))}
         </div>
         <div className="note-box accent">
@@ -218,7 +214,7 @@ export default function Home() {
           <div className="f15 fw600">{smsEnabled ? t('smsConnected') : `${t('smsAlerts')} · off`}</div>
           <div className="f13 muted">{maskPhone(user.phone)} · {t('worksNoData')}</div>
         </div>
-        <button type="button" className="pill-btn dark sm" onClick={testSms}>{t('testSms')}</button>
+        <button type="button" className="pill-btn outline sm" onClick={testSms}>{t('testSms')}</button>
       </Card>
 
       <Sheet open={adviceOpen} onClose={() => setAdviceOpen(false)} title={`${FLOOD.river} · ${t('floodWatch')}`}>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../state/AppContext.jsx';
-import { IconBtn } from '../components/UI.jsx';
+import { IconBtn, StatusLabel } from '../components/UI.jsx';
 import Icon from '../components/Icon.jsx';
 import TankPicker from '../components/TankPicker.jsx';
 import ForecastChart, { fmtDay } from '../components/ForecastChart.jsx';
@@ -11,9 +11,9 @@ import { TANKS } from '../data.js';
 import { COLORS } from '../theme.js';
 
 const RISK = {
-  spill: { cls: 's-critical', key: 'spillRisk', advice: 'adviceSpill', icon: 'warn' },
-  lowWater: { cls: 's-watch', key: 'lowRisk', advice: 'adviceLow', icon: 'drop' },
-  stable: { cls: 's-safe', key: 'stable', advice: 'adviceStable', icon: 'check' },
+  spill: { key: 'spillRisk', advice: 'adviceSpill' },
+  lowWater: { key: 'lowRisk', advice: 'adviceLow' },
+  stable: { key: 'stable', advice: 'adviceStable' },
 };
 
 export default function Forecast() {
@@ -57,7 +57,7 @@ export default function Forecast() {
         <>
           <div className="card">
             <div className="row between gap8 wrap">
-              <span className={`status-pill ${risk.cls}`}><Icon name={risk.icon} size={13} stroke={2.6} />{t(risk.key)}</span>
+              <StatusLabel status={s.risk}>{t(risk.key)}</StatusLabel>
               <span className={`source-chip ${data.source}`}>{data.source === 'model' ? `${t('liveModel')} · ${data.modelVersion}` : t('sampleData')}</span>
             </div>
             <div className="row end gap12 wrap">

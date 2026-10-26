@@ -30,7 +30,7 @@ function RequireAuth({ children }) {
   return children;
 }
 
-const NAV_ROUTES = ['/home', '/water', '/fields', '/profile', '/alerts', '/forecast'];
+const NAV_ROUTES = ['/home', '/water', '/report', '/fields', '/profile', '/alerts', '/forecast'];
 
 export default function App() {
   const { pathname } = useLocation();
