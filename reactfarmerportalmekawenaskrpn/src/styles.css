@@ -475,26 +475,12 @@ a { color: inherit; }
 }
 
 /* ---------- water ---------- */
-.water-screen { position: relative; min-height: 100%; padding-top: 430px; background: var(--dark); overflow: hidden; }
-.map-aerial { position: absolute; left: 0; right: 0; top: 0; height: 520px; transform-origin: 50% 40%; transition: transform .3s; background-color: #3d5520; background-image: repeating-linear-gradient(64deg, rgba(0,0,0,.18) 0 2px, transparent 2px 11px), repeating-linear-gradient(-26deg, rgba(255,255,255,.05) 0 1px, transparent 1px 46px), linear-gradient(170deg, #58752c, #2c3f16); }
-.map-aerial .f { position: absolute; transform: rotate(-26deg); border: 1px solid rgba(255,255,255,.2); }
-.f1 { background: repeating-linear-gradient(64deg, rgba(255,255,255,.08) 0 2px, transparent 2px 7px), #5f7f2d; }
-.f2 { background: repeating-linear-gradient(64deg, rgba(0,0,0,.15) 0 2px, transparent 2px 9px), #7d8f3c; }
-.m-tank { position: absolute; left: 62%; top: -30px; width: 210px; height: 150px; border-radius: 50% 45% 55% 50%; background: var(--blue); opacity: .9; transform: rotate(-10deg); }
-.m-canal { position: absolute; background: var(--water); }
-.m-canal.c1 { left: 40px; top: 300px; width: 520px; height: 8px; transform: rotate(-64deg); transform-origin: 0 0; }
-.m-canal.c2 { left: -60px; top: 262px; width: 560px; height: 6px; opacity: .85; transform: rotate(-26deg); }
-.m-road { position: absolute; left: -60px; top: 440px; width: 560px; height: 4px; background: #DCD6C4; opacity: .6; transform: rotate(-26deg); }
-.m-mine { position: absolute; left: 120px; top: 250px; width: 170px; height: 130px; border: 2px solid var(--accent); border-radius: 6px; transform: rotate(-26deg); background: repeating-linear-gradient(64deg, rgba(147,210,238,.55) 0 2px, rgba(147,210,238,.16) 2px 8px); animation: glow 2.4s ease-in-out infinite; }
-@keyframes glow { 50% { box-shadow: 0 0 0 8px rgba(147,210,238,.15); } }
-.map-label { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; text-align: center; text-shadow: 0 1px 6px rgba(0,0,0,.6); font-size: 15px; }
-.map-label small { font-size: 12px; font-weight: 600; color: var(--accent); }
-.ml-ico { width: 36px; height: 36px; border-radius: 50%; background: rgba(14,33,62,.7); border: 1.5px solid var(--accent); display: flex; align-items: center; justify-content: center; }
-.map-chip { position: absolute; height: 30px; padding: 0 12px; border-radius: 15px; background: rgba(14,33,62,.72); color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.map-chip i { width: 8px; height: 8px; border-radius: 4px; }
-.map-top { position: absolute; left: 16px; right: 16px; top: 20px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.water-screen { position: relative; min-height: 100%; padding-top: 400px; background: var(--dark); overflow: hidden; }
+.water-map { position: absolute; left: 0; right: 0; top: 0; height: 440px; background: #2c3f16; isolation: isolate; }
+.water-map .leaflet-control-attribution { margin-bottom: 44px; }
+.map-top { position: absolute; left: 16px; right: 16px; top: 20px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; z-index: 1001; }
 .map-title { font-size: 22px; font-weight: 600; color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
-.map-tools { position: absolute; right: 16px; top: 230px; display: flex; flex-direction: column; gap: 8px; }
+.map-tools { position: absolute; right: 16px; top: 150px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; }
 .water-sheet { position: relative; margin: 0 10px; background: rgba(24,48,84,.96); color: #fff; border-radius: 30px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .chart { height: 120px; display: flex; align-items: flex-end; gap: 6px; position: relative; margin-top: 18px; }
 .chart-line { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,255,255,.3); }
@@ -545,6 +531,7 @@ a { color: inherit; }
 .map-base button { height: 36px; }
 .lf-pin { cursor: grab; }
 .lf-tank .gm-tank-label { position: absolute; transform: translate(-50%, -50%); }
+.lf-tank .gm-tank-label.mine { background: var(--accent); color: var(--ink); font-size: 13px; padding: 7px 12px; } /* the farmer's own tank */
 .gmap-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--map-ink); }
 .gmap-wrap .tap-hint { top: 40%; }
 .gps-btn { position: absolute; left: 12px; bottom: 12px; height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: var(--accent); color: var(--ink); font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
