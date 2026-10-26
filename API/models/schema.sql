@@ -60,8 +60,7 @@ CREATE INDEX idx_levels_lookup ON reservoir_levels (reservoir_id, reading_date D
 CREATE TABLE IF NOT EXISTS farmers (
   farmer_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name       TEXT NOT NULL,
-  nic             TEXT unique not NULL
-                  CHECK (nic ~ '^([0-9]{9}[VvXx]|[0-9]{12})$'),  -- old (9 digits + V/X) or new (12 digits)
+  hashed_nic      TEXT unique not NULL,
   phone           TEXT unique not NULL,
   address         TEXT not NULL,
   district        TEXT not NULL,
@@ -99,3 +98,92 @@ DROP TRIGGER IF EXISTS trg_farmers_updated_at ON farmers;
 CREATE TRIGGER trg_farmers_updated_at
   BEFORE UPDATE ON farmers
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+
+
+
+  -- for farmer sessions,
+
+CREATE TABLE IF NOT EXISTS farmer_sessions (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farmer_id          UUID NOT NULL REFERENCES farmers(farmer_id) ON DELETE CASCADE,
+  refresh_token_hash CHAR(64) NOT NULL UNIQUE
+                     CHECK (refresh_token_hash ~ '^[0-9a-f]{64}$'),   -- SHA-256 hex of the token
+  family_id          UUID NOT NULL DEFAULT gen_random_uuid(),         -- groups tokens from one login chain (rotation)
+  ip                 INET NOT NULL,
+  user_agent         TEXT NOT NULL,
+  revoked            BOOLEAN NOT NULL DEFAULT FALSE,
+  revoked_at         TIMESTAMPTZ,
+  expires_at         TIMESTAMPTZ NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at       TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_farmer  ON farmer_sessions (farmer_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_family  ON farmer_sessions (family_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON farmer_sessions (expires_at);
+
+
+CREATE TABLE IF NOT EXISTS admins (
+  admin_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name      TEXT NOT NULL,
+  username       TEXT NOT NULL UNIQUE,
+  password_hash  TEXT NOT NULL,    -- Argon2 or bcrypt
+  role           TEXT NOT NULL CHECK (role IN ('officer', 'admin', 'super_admin')),
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_login_at  TIMESTAMPTZ
+);
+
+
+
+
+CREATE TABLE IF NOT EXISTS river_level_realtime (
+    global_id TEXT PRIMARY KEY,
+    basin TEXT,
+    gauge TEXT,
+    station TEXT,
+    water_level DOUBLE PRECISION,
+    rain_fall DOUBLE PRECISION,
+    creation_date TIMESTAMPTZ,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    alertpull DOUBLE PRECISION,
+    minorpull DOUBLE PRECISION,
+    majorpull DOUBLE PRECISION,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS rainfall_realtime (
+    global_id TEXT PRIMARY KEY,
+    basin TEXT,
+    gauge TEXT,
+    station TEXT,
+    rain_fall DOUBLE PRECISION,
+    creation_date TIMESTAMPTZ,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    alertpull DOUBLE PRECISION,
+    minorpull DOUBLE PRECISION,
+    majorpull DOUBLE PRECISION,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+
+CREATE TABLE IF NOT EXISTS water_issueing_schedule (
+    id SERIAL PRIMARY KEY,
+    no INT,
+    tank_name TEXT NOT NULL,
+    section TEXT,
+    initial_extent_ha NUMERIC,
+    water_start DATE,
+    water_end DATE,
+    paddy_target_days INT,
+    paddy_target_area NUMERIC,
+    paddy_area_percentage NUMERIC,
+    other_crops_target_days INT,
+    other_crops_target_area NUMERIC,
+    other_crops_area_percentage NUMERIC,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_tank_section_start UNIQUE (tank_name, section, water_start)
+);

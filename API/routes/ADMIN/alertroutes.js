@@ -1,10 +1,10 @@
 const express = require('express')
 const smsrouter = express.Router()
-const { runAlertCheck } = require('../services/alertservice.js')
+const { runAlertCheck } = require('../../services/alertservice.js')
 const {
   sendSms,
   sendRegistrationConfirmation
-} = require('../services/smsService.js')
+} = require('../../services/smsService.js')
 
 
 // Safe to hit as often as you like: shows what WOULD be sent, costs nothing

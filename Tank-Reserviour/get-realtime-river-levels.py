@@ -3,11 +3,13 @@
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 OBSERVATIONS_URL = (
@@ -18,12 +20,51 @@ STATIONS_URL = (
     "https://services3.arcgis.com/J7ZFXmR8rSmQ3FGf/arcgis/rest/services/"
     "hydrostations/FeatureServer/0/query"
 )
-OBSERVATION_FIELDS = (
-    "objectid,globalid,basin,gauge,water_level,rain_fall,CreationDate,"
-    "alertpull,minorpull,majorpull"
-)
+DEFAULT_OUTPUT_FILE = Path(__file__).with_name("realtime_river_levels.json")
+STATION_FIELDS = "station,basin,latitude,longitude"
 PAGE_SIZE = 1000
 TIMEOUT_SECONDS = 30
+TABLE_NAME = "river_level_realtime"
+
+# ArcGIS attribute name -> PostgreSQL column name.
+# objectid, Creator, Editor, and EditDate are intentionally omitted.
+FIELD_MAP = {
+    "globalid": "global_id",
+    "global_id": "global_id",
+    "basin": "basin",
+    "gauge": "gauge",
+    "station": "station",
+    "water_level": "water_level",
+    "rain_fall": "rain_fall",
+    "CreationDate": "creation_date",
+    "creation_date": "creation_date",
+    "latitude": "latitude",
+    "longitude": "longitude",
+    "alertpull": "alertpull",
+    "minorpull": "minorpull",
+    "majorpull": "majorpull",
+}
+OBSERVATION_COLUMNS = (
+    "global_id",
+    "basin",
+    "gauge",
+    "station",
+    "water_level",
+    "rain_fall",
+    "creation_date",
+    "latitude",
+    "longitude",
+    "alertpull",
+    "minorpull",
+    "majorpull",
+)
+DB_CONFIG = {
+    "host": os.environ.get("PGHOST", "localhost"),
+    "port": int(os.environ.get("PGPORT", "5432")),
+    "dbname": os.environ.get("PGDATABASE", "postgres"),
+    "user": os.environ.get("PGUSER", "postgres"),
+    "password": os.environ.get("PGPASSWORD", "postgres"),
+}
 
 
 class ArcGISRequestError(Exception):
@@ -53,6 +94,33 @@ def query_arcgis(url, params):
 def sql_string(value):
     """Quote a user-supplied string as an ArcGIS SQL string literal."""
     return "'" + value.replace("'", "''") + "'"
+
+
+def arcgis_timestamp_to_postgres(value):
+    """Convert an ArcGIS Unix timestamp in milliseconds to a UTC timestamp string."""
+    if value is None:
+        return None
+    return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat(
+        timespec="milliseconds"
+    )
+
+
+def normalize_station_key(value):
+    return " ".join((value or "").split()).casefold()
+
+
+def empty_to_none(value):
+    if value == "":
+        return None
+    return value
+
+
+def sanitize_observation(row):
+    clean = {}
+    for source_key, column in FIELD_MAP.items():
+        if source_key in row and column not in clean:
+            clean[column] = empty_to_none(row.get(source_key))
+    return {column: clean.get(column) for column in OBSERVATION_COLUMNS}
 
 
 def fetch_features(url, where, out_fields, order_by=None, distinct=False):
@@ -115,26 +183,135 @@ def fetch_observations(days, basin=None, station=None):
     rows = fetch_features(
         OBSERVATIONS_URL,
         " AND ".join(where_parts),
-        OBSERVATION_FIELDS,
+        "*",
         order_by="CreationDate DESC",
     )
 
-    for row in rows:
-        timestamp = row.get("CreationDate")
-        if timestamp is not None:
-            row["CreationDate_UTC"] = datetime.fromtimestamp(
-                timestamp / 1000, tz=timezone.utc
-            ).isoformat()
+    station_where_parts = ["1=1"]
+    if basin:
+        station_where_parts.append(f"basin = {sql_string(basin)}")
+    if station:
+        station_where_parts.append(f"station = {sql_string(station)}")
+    station_rows = fetch_features(
+        STATIONS_URL,
+        " AND ".join(station_where_parts),
+        STATION_FIELDS,
+    )
+    station_lookup = {
+        (
+            normalize_station_key(item.get("basin")),
+            normalize_station_key(item.get("station")),
+        ): item
+        for item in station_rows
+    }
 
+    unmatched_stations = set()
+    for row in rows:
+        station_info = station_lookup.get(
+            (
+                normalize_station_key(row.get("basin")),
+                normalize_station_key(row.get("gauge")),
+            )
+        )
+        row["station"] = row.get("gauge")
+        row["latitude"] = station_info.get("latitude") if station_info else None
+        row["longitude"] = station_info.get("longitude") if station_info else None
+        if not station_info:
+            unmatched_stations.add((row.get("basin"), row.get("gauge")))
+
+        for field in ("CreationDate", "EditDate"):
+            if field in row:
+                row[field] = arcgis_timestamp_to_postgres(row[field])
+
+    if unmatched_stations:
+        examples = ", ".join(
+            f"{basin}: {station}"
+            for basin, station in sorted(unmatched_stations)[:5]
+        )
+        print(
+            f"warning: coordinates were not found for {len(unmatched_stations)} "
+            f"station(s); examples: {examples}",
+            file=sys.stderr,
+        )
+
+    observations = [sanitize_observation(row) for row in rows]
     return {
         "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": OBSERVATIONS_URL,
+        "station_metadata_source": STATIONS_URL,
         "window_days": days,
         "basin": basin,
         "station": station,
-        "count": len(rows),
-        "observations": rows,
+        "count": len(observations),
+        "observations": observations,
     }
+
+
+def sync_to_postgres(observations, db_config):
+    try:
+        import psycopg2
+        from psycopg2.extras import execute_batch
+    except ImportError as error:
+        raise RuntimeError("psycopg2 is required to write river_level_realtime") from error
+
+    if not observations:
+        print("No observations to sync", file=sys.stderr)
+        return 0
+
+    rows = [row for row in observations if row.get("global_id")]
+    skipped = len(observations) - len(rows)
+    if skipped:
+        print(
+            f"warning: {skipped} observation(s) are missing global_id and will be skipped",
+            file=sys.stderr,
+        )
+    if not rows:
+        print("No observations with global_id to sync", file=sys.stderr)
+        return 0
+
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+        global_id TEXT PRIMARY KEY,
+        basin TEXT,
+        gauge TEXT,
+        station TEXT,
+        water_level DOUBLE PRECISION,
+        rain_fall DOUBLE PRECISION,
+        creation_date TIMESTAMPTZ,
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION,
+        alertpull DOUBLE PRECISION,
+        minorpull DOUBLE PRECISION,
+        majorpull DOUBLE PRECISION,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """
+    column_sql = ", ".join(OBSERVATION_COLUMNS)
+    placeholders = ", ".join(["%s"] * len(OBSERVATION_COLUMNS))
+    update_sql = ", ".join(
+        f"{column} = EXCLUDED.{column}"
+        for column in OBSERVATION_COLUMNS
+        if column != "global_id"
+    )
+    upsert_query = f"""
+        INSERT INTO {TABLE_NAME} ({column_sql})
+        VALUES ({placeholders})
+        ON CONFLICT (global_id) DO UPDATE SET
+            {update_sql},
+            fetched_at = now()
+    """
+    values = [tuple(row.get(column) for column in OBSERVATION_COLUMNS) for row in rows]
+
+    conn = psycopg2.connect(**db_config)
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(create_table_query)
+                execute_batch(cur, upsert_query, values)
+        print(f"Synced {len(rows)} observations to {TABLE_NAME}", file=sys.stderr)
+        return len(rows)
+    finally:
+        conn.close()
 
 
 def parse_args():
@@ -155,8 +332,8 @@ def parse_args():
     parser.add_argument(
         "--days",
         type=int,
-        default=3,
-        help="Lookback window in days (1-7; dashboard chart defaults to 3).",
+        default=7,
+        help="Lookback window in days (1-7; defaults to the source's full seven days).",
     )
     parser.add_argument(
         "--list-basins",
@@ -170,7 +347,14 @@ def parse_args():
     )
     parser.add_argument(
         "--output",
-        help="Write JSON to this file instead of stdout.",
+        type=Path,
+        default=DEFAULT_OUTPUT_FILE,
+        help=f"Write JSON to this file (default: {DEFAULT_OUTPUT_FILE}).",
+    )
+    parser.add_argument(
+        "--skip-db",
+        action="store_true",
+        help="Write JSON only; do not sync to PostgreSQL.",
     )
     args = parser.parse_args()
 
@@ -188,18 +372,23 @@ def main():
     try:
         if args.list_basins:
             result = list_selector_values("basins")
+            sys.stdout.write(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
         elif args.list_stations:
             result = list_selector_values("stations", args.basin)
+            sys.stdout.write(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
         else:
             result = fetch_observations(args.days, args.basin, args.station)
-        output = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
-
-        if args.output:
-            with open(args.output, "w", encoding="utf-8") as output_file:
-                output_file.write(output)
-        else:
-            sys.stdout.write(output)
-    except (ArcGISRequestError, OSError) as error:
+            args.output.write_text(
+                json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(
+                f"Saved {result['count']} observations to {args.output}",
+                file=sys.stderr,
+            )
+            if not args.skip_db:
+                sync_to_postgres(result["observations"], DB_CONFIG)
+    except (ArcGISRequestError, OSError, RuntimeError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     return 0

@@ -41,7 +41,7 @@ function normalizePhoneNumber(phone) {
 async function sendSms(recipients, message, options = {}) {
   const firstRecipient = (Array.isArray(recipients) ? recipients[0] : recipients)
     ?.toString()
-    .split(',')[0]    //prevent one OTP getting sent to multiple nums
+    .split(',')[0]    //prevent one OTP getting sent to multiple nums IMPORTNT Logic
   const recipientCheck = validateSriLankanMobile(firstRecipient)
 
   if (!recipientCheck.valid) {
@@ -61,7 +61,7 @@ async function sendSms(recipients, message, options = {}) {
     }
   }
 
-  const token = process.env.TEXTLK_API_TOKEN || '8389|dmehC0T407OpvJYIBAmXeIOc3seMvsj4O0KczJlm9c7b2185'
+  const token = process.env.TEXTLK_API_TOKEN
   if (!token) {
     throw new Error('TEXTLK_API_TOKEN is not configured.')
   }
