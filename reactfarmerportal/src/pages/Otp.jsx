@@ -82,11 +82,16 @@ export default function Otp() {
   const verify = async (code) => {
     if (code.length < 6 || busy) return;
     setBusy(true);
-    try {
-      const res = await verifyOtp(pendingPhone, code);
-      if (res.alreadyRegistered) {
-        setRegistered(true);
-        return;
+    setTimeout(() => {
+      if (code === otpCode) {
+        update({ user: { phone: pendingPhone }, otpCode: null });
+        showToast('Signed in');
+        navigate(farm ? '/home' : '/register/identity', { replace: true });
+      } else {
+        setBusy(false);
+        setError(t('wrongCode'));
+        setDigits(['', '', '', '', '', '']);
+        refs.current[0]?.focus();
       }
       update({ user: { phone: pendingPhone, verifiedAt: Date.now() }, farm: null });
       showToast('Number verified');

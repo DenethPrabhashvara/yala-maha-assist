@@ -33,7 +33,7 @@ export const newCrop = () => ({
   unit: 'kg',
 });
 
-export const emptyDraft = () => ({ name: '', nic: '', address: '', district: '', division: '', crops: [newCrop()], pin: null, nearest: null, nearWater: null, water: null, remindLater: false, consent: false });
+export const emptyDraft = () => ({ name: '', nic: '', crops: [newCrop()], pin: null, nearest: null, nearWater: null, water: null, located: false, consent: false });
 
 const defaults = {
   lang: 'en',

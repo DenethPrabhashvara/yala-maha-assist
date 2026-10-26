@@ -14,10 +14,10 @@ export default function RegReview() {
   const { t, draft, update, user, showSms, showToast, alerts, logout } = useApp();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const info = nicInfo(draft.nic || '');
-  // Already registered → editing the farm (from My Fields). The API has no update endpoint yet, so edits stay on this device.
-  const editing = Boolean(user.farmerId);
-  if (!editing && (!info.valid || !draft.address?.trim() || !draft.district)) return <Navigate to="/register/identity" replace />;
+  const info = nicInfo(draft.nic);
+  if (!info.valid) return <Navigate to="/register/identity" replace />;
+  // The farm location is required; it must come from the phone's GPS.
+  if (draft.pin?.lat == null || !draft.located) return <Navigate to="/register/pin" replace />;
 
   const total = draft.crops.reduce((s, c) => s + (Number(c.acres) || 0), 0);
 
@@ -46,33 +46,9 @@ export default function RegReview() {
         land_acres: Math.round(total * 100) / 100,
         primary_crop: main ? `${main.type} · ${main.variety.split(' (')[0]}` : undefined,
       });
-    } catch (err) {
-      setBusy(false);
-      if (err.status === 403) { // phone verification expired (15 min)
-        showToast('Verification expired. Please confirm your number again.', 'error');
-        logout();
-        navigate('/login', { replace: true });
-      } else if (err.status === 409) {
-        showToast('This number or NIC is already registered. Please sign in.', 'error');
-        logout();
-        navigate('/login', { replace: true });
-      } else {
-        showToast(err.message, 'error');
-      }
-      return;
-    }
-
-    const farm = { ...farmFromProfile(farmer, { ...draft, nic: undefined, consent: undefined, phone: user.phone }), registeredAt: Date.now() };
-    update({
-      user: { phone: user.phone, farmerId: farmer.farmer_id },
-      farm,
-      draft: emptyDraft(),
-      alerts: [{ id: `f${Date.now()}`, kind: 'farm', title: `Farm registered · ${farm.id}`, body: `${total} acres added to the Mahaweli B irrigation list.`, when: 'Just now', read: false }, ...alerts],
-    });
-    if (draft.remindLater && !draft.pin) {
-      setTimeout(() => showSms('Reminder: when you are home, open Yala-Maha Assist and pin your farm on the canal map.'), 6500);
-    }
-    navigate('/register/done', { replace: true, state: { id: farm.id } });
+      showSms(`Yala-Maha Assist: Registration complete. Your Farm ID is ${id}. Keep this SMS for the Agrarian Service Centre.`);
+      navigate('/register/done', { replace: true, state: { id } });
+    }, 1200);
   };
 
   return (
@@ -108,7 +84,7 @@ export default function RegReview() {
 
       <div className="card row-card static">
         <div className="icon-tile mint"><Icon name="pin" size={22} color={COLORS.pin} /></div>
-        <div className="grow"><div className="f12 muted">{t('location')}</div><div className="f15 fw600">{draft.nearest || (draft.remindLater ? `${t('notPinned')} · SMS reminder on` : t('notPinned'))}</div></div>
+        <div className="grow"><div className="f12 muted">{t('location')}</div><div className="f15 fw600">{draft.nearest}</div></div>
         <Link to="/register/pin" className="f14 fw600 ink">{t('edit')}</Link>
       </div>
 
