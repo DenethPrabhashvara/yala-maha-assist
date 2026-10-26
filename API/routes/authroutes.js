@@ -230,7 +230,12 @@ authrouter.route('/refresh_token').get(async (req,res)=>{
         }
       )
   }
-  const decoded =jwt.verify(refreshToken, JWT_SECRET)
+  let decoded
+  try {
+    decoded = jwt.verify(refreshToken, JWT_SECRET)
+  } catch {
+    return res.status(401).json({ status: "failed", message: "refreshToken invalid or expired" })
+  }
 
   const refreshTokenHash =crypto.createHash('sha256').update(refreshToken).digest('hex')
 
