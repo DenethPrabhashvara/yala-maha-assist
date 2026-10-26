@@ -59,8 +59,7 @@ async function createFarmer(farmer) {
         ]
     )
 
-
-    return result.rows[0]
+    return {result: result.rows[0], hashedNic}
 
 }
 
@@ -78,7 +77,7 @@ async function getFarmerDetails(req,res){
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    result = await db.query('SELECT * FROM farmers WHERE hashed_nic =$1', [decoded.id])
+    result = await db.query('SELECT farmer_id, full_name,phone,address,district,division,farm_latitude, farm_longitude,reservoir_id, tank_id,land_acres, primary_crop, created_at, updated_at  FROM farmers WHERE farmer_id =$1', [decoded.id])
     res.status(200).json(
         {
             status: "success",
