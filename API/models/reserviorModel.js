@@ -20,12 +20,18 @@ exports.getAllResvData = async (req, res, next) =>{
 exports.getResById = async (req, res, next) =>{
     try{
         result = await db.query(`SELECT * FROM reservoirs WHERE id = $1;`, [req.params.id])
+        result1 = await db.query(`SELECT * FROM reservoir_levels WHERE reservoir_id=$1 ORDER BY reading_date DESC`, [req.params.id])
 
+        
+        console.log(result1.rows)
          
         res.status(200).json(
             {
                 status: "success",
-                data : result.rows[0]
+                data: {
+                        const : result.rows[0],  
+                        latest: result1.rows[0]  //GET THE LATEST DATE UPDATED WATER LEVEL AND EVRYTHING
+                }
             }
         )
     }
@@ -35,6 +41,17 @@ exports.getResById = async (req, res, next) =>{
 }
 
 
-exports.getReslevels = (req, res , next)=>{
-    reslevel = db.query('SELECT * FROM reservoir_levels')
-}
+exports.getReslevels = async (req, res , next)=>{
+    try{
+        reslevel = await db.query(`SELECT * FROM reservoir_levels WHERE reservoir_id=$1 AND reading_date >= CURRENT_DATE - ($2 || 'days')::INTERVAL`, [req.params.id, req.query.days] )
+        res.status(200).json(
+            {
+                status:"success",
+                data: reslevel.rows
+            }
+        )
+    } 
+    catch(error){
+        next(error)
+    }
+}   
