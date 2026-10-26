@@ -76,8 +76,13 @@ async function getFarmerDetails(req,res){
 
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    result = await db.query('SELECT farmer_id, full_name,phone,address,district,division,farm_latitude, farm_longitude,reservoir_id, tank_id,land_acres, primary_crop, created_at, updated_at  FROM farmers WHERE farmer_id =$1', [decoded.id])
+    let decoded
+    try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET)
+    } catch {
+        return res.status(401).json({ status: "error", message: "token invalid or expired" })
+    }
+    const result = await db.query('SELECT farmer_id, full_name,phone,address,district,division,farm_latitude, farm_longitude,reservoir_id, tank_id,land_acres, primary_crop, created_at, updated_at  FROM farmers WHERE farmer_id =$1', [decoded.id])
     res.status(200).json(
         {
             status: "success",

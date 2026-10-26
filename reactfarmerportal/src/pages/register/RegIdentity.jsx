@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { formatPhone, nicInfo, useApp } from '../../state/AppContext.jsx';
 import { PrimaryBtn, StepHeader } from '../../components/UI.jsx';
 import Icon from '../../components/Icon.jsx';
+import { DISTRICTS } from '../../data.js';
 
 export default function RegIdentity() {
   const { t, draft, update, user, farm, logout } = useApp();
   const navigate = useNavigate();
   const [touched, setTouched] = useState(false);
   const set = (patch) => update((s) => ({ draft: { ...s.draft, ...patch } }));
-  const info = nicInfo(draft.nic);
+  const info = nicInfo(draft.nic || '');
   const nameOk = draft.name.trim().split(/\s+/).length >= 2;
-  const canNext = nameOk && info.valid;
+  const addressOk = (draft.address || '').trim().length >= 5;
+  const districtOk = DISTRICTS.includes(draft.district);
+  const canNext = nameOk && info.valid && addressOk && districtOk;
 
   const next = () => {
     setTouched(true);
@@ -40,7 +43,7 @@ export default function RegIdentity() {
         <div className="field">
           <label htmlFor="nic" className="label">{t('nic')}</label>
           <input id="nic" className={`input strong mono ${draft.nic && !info.valid && touched ? 'error' : ''}`} placeholder="821453298V or 198421098456"
-            value={draft.nic} maxLength={12} autoCapitalize="characters"
+            value={draft.nic || ''} maxLength={12} autoCapitalize="characters"
             onChange={(e) => set({ nic: e.target.value.toUpperCase().replace(/[^0-9VX]/g, '') })} />
           {info.valid ? (
             <div className="row gap6 wrap">
@@ -52,6 +55,32 @@ export default function RegIdentity() {
           ) : (
             <div className="hint">{t('nicBad')}</div>
           )}
+        </div>
+
+        <div className="field">
+          <label htmlFor="addr" className="label">{t('address')}</label>
+          <input id="addr" className={`input ${touched && !addressOk ? 'error' : ''}`} autoComplete="street-address" placeholder="e.g. No. 12, Canal Road, Aralaganwila"
+            value={draft.address || ''} maxLength={200} onChange={(e) => set({ address: e.target.value })} />
+          {touched && !addressOk && <div className="err-text">{t('addressBad')}</div>}
+        </div>
+
+        <div className="grid2">
+          <div className="field">
+            <label htmlFor="dist" className="label">{t('district')}</label>
+            <div className="select-wrap">
+              <select id="dist" className={touched && !districtOk ? 'error' : ''} value={draft.district || ''} onChange={(e) => set({ district: e.target.value })}>
+                <option value="" disabled>{t('choose')}</option>
+                {DISTRICTS.map((d) => <option key={d}>{d}</option>)}
+              </select>
+              <Icon name="down" size={16} stroke={2.4} />
+            </div>
+            {touched && !districtOk && <div className="err-text">{t('districtBad')}</div>}
+          </div>
+          <div className="field">
+            <label htmlFor="div" className="label">{t('division')} <span className="fw500 muted">({t('optional')})</span></label>
+            <input id="div" className="input" placeholder="e.g. Dimbulagala"
+              value={draft.division || ''} maxLength={80} onChange={(e) => set({ division: e.target.value })} />
+          </div>
         </div>
 
         <div className="field">

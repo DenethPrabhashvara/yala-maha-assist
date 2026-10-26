@@ -6,32 +6,73 @@ import Icon from '../../components/Icon.jsx';
 import { CROP_CATALOG } from '../../data.js';
 import { waterLabel } from './RegWater.jsx';
 import { COLORS } from '../../theme.js';
+import { farmFromProfile, register } from '../../api/auth.js';
+
+const round6 = (v) => Math.round(v * 1e6) / 1e6;
 
 export default function RegReview() {
-  const { t, draft, update, user, showSms, alerts } = useApp();
+  const { t, draft, update, user, showSms, showToast, alerts, logout } = useApp();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const info = nicInfo(draft.nic);
-  if (!info.valid) return <Navigate to="/register/identity" replace />;
+  const info = nicInfo(draft.nic || '');
+  // Already registered → editing the farm (from My Fields). The API has no update endpoint yet, so edits stay on this device.
+  const editing = Boolean(user.farmerId);
+  if (!editing && (!info.valid || !draft.address?.trim() || !draft.district)) return <Navigate to="/register/identity" replace />;
 
   const total = draft.crops.reduce((s, c) => s + (Number(c.acres) || 0), 0);
 
-  const submit = () => {
+  const saveEdit = () => {
+    update((s) => ({ farm: { ...s.farm, ...draft, id: s.farm.id, farmerId: s.farm.farmerId }, draft: emptyDraft() }));
+    showToast('Farm details updated');
+    navigate('/fields', { replace: true });
+  };
+
+  const submit = async () => {
+    if (editing) { saveEdit(); return; }
     setBusy(true);
-    setTimeout(() => {
-      const id = draft.id || `FAR-${String(16 + Math.floor(Math.random() * 80)).padStart(3, '0')}`;
-      const farm = { ...draft, id, phone: user.phone, registeredAt: Date.now() };
-      update({
-        farm,
-        draft: emptyDraft(),
-        alerts: [{ id: `f${Date.now()}`, kind: 'farm', title: `Farm registered · ${id}`, body: `${total} acres added to the Mahaweli B irrigation list.`, when: 'Just now', read: false }, ...alerts],
+    const main = draft.crops.reduce((a, c) => ((Number(c.acres) || 0) > (Number(a.acres) || 0) ? c : a), draft.crops[0]);
+    const geo = draft.pin?.lat != null ? draft.pin : null;
+    let farmer;
+    try {
+      farmer = await register({
+        phone: user.phone,
+        full_name: draft.name.trim(),
+        nic: draft.nic.trim(),
+        address: draft.address.trim(),
+        district: draft.district,
+        division: draft.division?.trim() || undefined,
+        farm_latitude: geo ? round6(geo.lat) : undefined,
+        farm_longitude: geo ? round6(geo.lng) : undefined,
+        land_acres: Math.round(total * 100) / 100,
+        primary_crop: main ? `${main.type} · ${main.variety.split(' (')[0]}` : undefined,
       });
-      showSms(`Yala-Maha Assist: Registration complete. Your Farm ID is ${id}. Keep this SMS for the Agrarian Service Centre.`);
-      if (draft.remindLater && !draft.pin) {
-        setTimeout(() => showSms('Reminder: when you are home, open Yala-Maha Assist and pin your farm on the canal map.'), 6500);
+    } catch (err) {
+      setBusy(false);
+      if (err.status === 403) { // phone verification expired (15 min)
+        showToast('Verification expired. Please confirm your number again.', 'error');
+        logout();
+        navigate('/login', { replace: true });
+      } else if (err.status === 409) {
+        showToast('This number or NIC is already registered. Please sign in.', 'error');
+        logout();
+        navigate('/login', { replace: true });
+      } else {
+        showToast(err.message, 'error');
       }
-      navigate('/register/done', { replace: true, state: { id } });
-    }, 1200);
+      return;
+    }
+
+    const farm = { ...farmFromProfile(farmer, { ...draft, nic: undefined, consent: undefined, phone: user.phone }), registeredAt: Date.now() };
+    update({
+      user: { phone: user.phone, farmerId: farmer.farmer_id },
+      farm,
+      draft: emptyDraft(),
+      alerts: [{ id: `f${Date.now()}`, kind: 'farm', title: `Farm registered · ${farm.id}`, body: `${total} acres added to the Mahaweli B irrigation list.`, when: 'Just now', read: false }, ...alerts],
+    });
+    if (draft.remindLater && !draft.pin) {
+      setTimeout(() => showSms('Reminder: when you are home, open Yala-Maha Assist and pin your farm on the canal map.'), 6500);
+    }
+    navigate('/register/done', { replace: true, state: { id: farm.id } });
   };
 
   return (
@@ -45,8 +86,9 @@ export default function RegReview() {
       <div className="card">
         <div className="row between"><span className="label">{t('farmer')}</span><Link to="/register/identity" className="f14 fw600 ink">{t('edit')}</Link></div>
         <div className="f18 fw600">{draft.name}</div>
+        <div className="f14 muted lh">{draft.address}<br />{[draft.division, draft.district].filter(Boolean).join(', ')}</div>
         <div className="grid2 f14">
-          <div className="soft-tile"><div className="f12 muted">NIC</div><div className="fw600">{info.masked}</div></div>
+          <div className="soft-tile"><div className="f12 muted">NIC</div><div className="fw600">{info.masked || '••••••'}</div></div>
           <div className="soft-tile"><div className="f12 muted">{t('mobile')}</div><div className="fw600">{maskPhone(user.phone)}</div></div>
         </div>
       </div>
