@@ -1,12 +1,13 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useApp } from './state/AppContext.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import { BottomNav, OfflineBanner, SmsBanner, Toast } from './components/UI.jsx';
+import { BottomNav, OfflineBanner, Toast } from './components/UI.jsx';
 import Splash from './pages/Splash.jsx';
 import Welcome from './pages/Welcome.jsx';
 import Language from './pages/Language.jsx';
 import Login from './pages/Login.jsx';
 import Otp from './pages/Otp.jsx';
+import SignIn from './pages/SignIn.jsx';
 import Home from './pages/Home.jsx';
 import Water from './pages/Water.jsx';
 import Report from './pages/Report.jsx';
@@ -50,7 +51,6 @@ export default function App() {
     <div className="stage">
       <div className={`device lang-${lang}`}>
         <OfflineBanner />
-        <SmsBanner />
         <ErrorBoundary key={pathname}>
           <main className={`viewport ${showNav ? 'has-nav' : ''}`} key={pathname}>
             <Routes>
@@ -59,6 +59,7 @@ export default function App() {
               <Route path="/language" element={<Language />} />
               <Route path="/login" element={<Login />} />
               <Route path="/otp" element={<Otp />} />
+              <Route path="/signin" element={<SignIn />} />
               <Route path="/home" element={farmOnly(<Home />)} />
               <Route path="/water" element={farmOnly(<Water />)} />
               <Route path="/report" element={farmOnly(<Report />)} />

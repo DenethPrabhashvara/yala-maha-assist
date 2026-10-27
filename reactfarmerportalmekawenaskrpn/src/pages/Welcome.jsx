@@ -30,7 +30,7 @@ function Art({ kind }) {
         <div className="art-float" style={{ left: 16, bottom: 16, right: 16 }}>
           <div className="row gap10">
             <div className="date-tile"><small>THU</small><b>29</b></div>
-            <div><div className="f24 fw600">6:00 AM</div><div className="f13" style={{ color: COLORS.dim }}>Kapawa · Channel D-4</div></div>
+            <div><div className="f24 fw600">6:00 AM</div><div className="f13" style={{ color: COLORS.dim }}>Water release · Channel D-4</div></div>
           </div>
           <div className="mini-bars" aria-hidden="true">{[48, 55, 58, 62, 66, 69, 72].map((h, i) => <span key={i} style={{ height: `${h}%` }} />)}</div>
         </div>

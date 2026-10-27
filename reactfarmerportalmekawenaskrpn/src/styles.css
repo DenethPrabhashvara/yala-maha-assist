@@ -368,6 +368,7 @@ a { color: inherit; }
 .select-wrap { position: relative; }
 .select-wrap select { appearance: none; width: 100%; height: 56px; border-radius: 18px; border: 1px solid var(--border-strong); background: var(--field); padding: 0 36px 0 14px; font-size: 15px; font-weight: 600; outline: none; }
 .select-wrap select:focus { border: 2px solid var(--ink); }
+.select-wrap select.error { border: 2px solid var(--red); background: var(--danger-soft); }
 .select-wrap svg { position: absolute; right: 14px; top: 20px; pointer-events: none; }
 .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
 .pill { min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--border); background: #fff; font-weight: 600; font-size: 14px; }
@@ -452,11 +453,6 @@ a { color: inherit; }
 .toast.t-error svg { color: var(--amber); }
 .device:not(:has(.bottom-nav)) .toast { bottom: auto; top: 16px; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } }
-.sms-banner { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 70; border: 0; background: rgba(249,250,252,.96); backdrop-filter: blur(12px); border-radius: 22px; padding: 12px 14px; display: flex; gap: 12px; text-align: left; box-shadow: 0 12px 34px rgba(0,0,0,.28); animation: drop .4s cubic-bezier(.2, 1.2, .4, 1) both; font-size: 14px; line-height: 1.35; }
-.sms-ico { width: 36px; height: 36px; border-radius: 10px; background: var(--green-bright); display: flex; align-items: center; justify-content: center; flex: none; }
-.sms-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.sms-text small { color: var(--muted); font-size: 12px; }
-@keyframes drop { from { transform: translateY(-140%); } }
 .offline-banner { background: var(--amber); color: var(--ink); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; padding: 10px 16px; justify-content: center; text-align: center; }
 
 /* ---------- bottom nav ---------- */

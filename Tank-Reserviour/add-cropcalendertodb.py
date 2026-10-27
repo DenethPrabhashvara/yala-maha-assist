@@ -52,7 +52,7 @@ def create_table_if_not_exists(cur):
         other_crops_target_area NUMERIC,
         other_crops_area_percentage NUMERIC,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        CONSTRAINT uq_tank_section_start UNIQUE (tank_name, section, water_start)
+        CONSTRAINT uq_tank_section_start UNIQUE NULLS NOT DISTINCT (tank_name, section, water_start)
     );
     """
     cur.execute(query)

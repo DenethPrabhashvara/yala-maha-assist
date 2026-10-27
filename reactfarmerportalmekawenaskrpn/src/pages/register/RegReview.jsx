@@ -1,36 +1,74 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { emptyDraft, maskPhone, nicInfo, useApp } from '../../state/AppContext.jsx';
+import { emptyDraft, farmPayload, maskPhone, nicInfo, useApp } from '../../state/AppContext.jsx';
 import { PrimaryBtn, StepHeader } from '../../components/UI.jsx';
 import Icon from '../../components/Icon.jsx';
 import { CROP_CATALOG } from '../../data.js';
 import { waterLabel } from './RegWater.jsx';
 import { COLORS } from '../../theme.js';
+import { findReservoirId, register, saveFarmDetails, updateProfile } from '../../api/auth.js';
 
 export default function RegReview() {
-  const { t, draft, update, user, showSms, alerts } = useApp();
+  const { t, draft, update, user, alerts, showToast } = useApp();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const info = nicInfo(draft.nic);
-  if (!info.valid) return <Navigate to="/register/identity" replace />;
+  // A registered farmer's NIC is already on file and cannot change.
+  if ((!user.farmerId && !info.valid) || !draft.address?.trim() || !draft.district) return <Navigate to="/register/identity" replace />;
   // The farm location is required; it must come from the phone's GPS.
   if (draft.pin?.lat == null || !draft.located) return <Navigate to="/register/pin" replace />;
 
   const total = draft.crops.reduce((s, c) => s + (Number(c.acres) || 0), 0);
 
-  const submit = () => {
+  const saveFarm = (id, farmerId, reservoirId) => {
+    const farm = { ...draft, id, reservoirId, phone: user.phone, registeredAt: draft.registeredAt || Date.now() };
+    update({
+      user: farmerId ? { phone: user.phone, farmerId } : user,
+      farm,
+      draft: emptyDraft(),
+      alerts: [{ id: `f${Date.now()}`, kind: 'farm', title: `Farm registered · ${id}`, body: `${total} acres added to the Mahaweli B irrigation list.`, when: 'Just now', read: false }, ...alerts],
+    });
+    navigate('/register/done', { replace: true, state: { id } });
+  };
+
+  const submit = async () => {
     setBusy(true);
-    setTimeout(() => {
-      const id = draft.id || `FAR-${String(16 + Math.floor(Math.random() * 80)).padStart(3, '0')}`;
-      const farm = { ...draft, id, phone: user.phone, registeredAt: Date.now() };
-      update({
-        farm,
-        draft: emptyDraft(),
-        alerts: [{ id: `f${Date.now()}`, kind: 'farm', title: `Farm registered · ${id}`, body: `${total} acres added to the Mahaweli B irrigation list.`, when: 'Just now', read: false }, ...alerts],
-      });
-      showSms(`Yala-Maha Assist: Registration complete. Your Farm ID is ${id}. Keep this SMS for the Agrarian Service Centre.`);
-      navigate('/register/done', { replace: true, state: { id } });
-    }, 1200);
+    setError('');
+    try {
+      const tank = draft.water?.source === 'tank' ? draft.water.name : null;
+      const details = {
+        full_name: draft.name.trim(),
+        address: draft.address.trim(),
+        district: draft.district,
+        division: draft.division?.trim() || null,
+        farm_latitude: Number(draft.pin.lat.toFixed(6)),
+        farm_longitude: Number(draft.pin.lng.toFixed(6)),
+        reservoir_id: await findReservoirId(tank).catch(() => null),
+        tank_id: null,
+        land_acres: Math.round(total * 100) / 100,
+        primary_crop: draft.crops[0]?.type || null,
+      };
+      const farm = farmPayload(draft);
+      if (user.farmerId) {
+        await updateProfile(details);
+        await saveFarmDetails(farm);
+        saveFarm(draft.id, null, details.reservoir_id);
+        return;
+      }
+      const farmer = await register({ ...details, ...farm, phone: user.phone, nic: draft.nic.trim() });
+      saveFarm(farmer.farm_id, farmer.farmer_id, details.reservoir_id);
+    } catch (err) {
+      setBusy(false);
+      if (err.status === 403) {
+        // The 15-minute window after the OTP ran out: verify the number again, the draft is kept.
+        showToast(t('verifyAgain'), 'error');
+        update({ pendingPhone: user.phone, user: null });
+        navigate('/login', { replace: true });
+        return;
+      }
+      setError(err.message);
+    }
   };
 
   return (
@@ -44,8 +82,9 @@ export default function RegReview() {
       <div className="card">
         <div className="row between"><span className="label">{t('farmer')}</span><Link to="/register/identity" className="f14 fw600 ink">{t('edit')}</Link></div>
         <div className="f18 fw600">{draft.name}</div>
+        <div className="f14 muted lh">{[draft.address, draft.division, draft.district].filter(Boolean).join(', ')}</div>
         <div className="grid2 f14">
-          <div className="soft-tile"><div className="f12 muted">NIC</div><div className="fw600">{info.masked}</div></div>
+          <div className="soft-tile"><div className="f12 muted">NIC</div><div className="fw600">{info.valid ? info.masked : t('onFile')}</div></div>
           <div className="soft-tile"><div className="f12 muted">{t('mobile')}</div><div className="fw600">{maskPhone(user.phone)}</div></div>
         </div>
       </div>
@@ -80,6 +119,7 @@ export default function RegReview() {
         <span>{t('consent')}</span>
       </label>
 
+      {error && <div className="err-text" role="alert">{error}</div>}
       <div className="grow" />
       <PrimaryBtn onClick={submit} disabled={!draft.consent || busy} icon="check">{busy ? t('submitting') : t('submit')}</PrimaryBtn>
       <div className="center f13 muted">{t('farmIdSms')}</div>

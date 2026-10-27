@@ -1,13 +1,9 @@
 {
   "name": "yala-maha-assist",
   "version": "1.0.0",
-  "description": "Yala-Maha Assist · Hydrological Monitoring, Farmer Registration & Agricultural Early Warning System",
+  "description": "Yala-Maha Assist · shared root package (runs the ML forecast service). The admin portal is in adminportal/, the farmer portal in reactfarmerportalmekawenaskrpn/.",
   "scripts": {
-    "start": "vite --host 0.0.0.0",
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "node --test test/test-suite.js"
+    "ml": "node ml-model/server.js"
   },
   "keywords": [
     "agriculture",
@@ -19,18 +15,8 @@
   ],
   "author": "Yala-Maha Assist Team",
   "license": "ISC",
-  "devDependencies": {
-    "@vitejs/plugin-react": "^6.1.2",
-    "vite": "^8.3.4"
-  },
   "dependencies": {
-    "@canvasjs/react-charts": "^1.0.2",
-    "chart.js": "^4.5.1",
     "cors": "^2.8.6",
-    "express": "^5.3.0",
-    "pg": "^8.23.1",
-    "react": "^19.3.1",
-    "react-chartjs-2": "^5.3.1",
-    "react-dom": "^19.3.1"
+    "express": "^5.3.0"
   }
 }

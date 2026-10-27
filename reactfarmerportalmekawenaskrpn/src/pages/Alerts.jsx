@@ -4,7 +4,7 @@ import Icon from '../components/Icon.jsx';
 
 const KIND = {
   flood: { icon: 'warn', cls: 'amber' },
-  kapawa: { icon: 'drop', cls: 'blue' },
+  release: { icon: 'drop', cls: 'blue' },
   tank: { icon: 'tank', cls: 'soft' },
   report: { icon: 'check', cls: 'green' },
   farm: { icon: 'leaf', cls: 'accent' },

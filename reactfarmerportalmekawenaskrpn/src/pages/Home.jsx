@@ -4,10 +4,10 @@ import { greetingKey, maskPhone, useApp } from '../state/AppContext.jsx';
 import { Aerial, Card, IconBtn, LangSwitch, Logo, StatusLabel, StatusPill } from '../components/UI.jsx';
 import Icon from '../components/Icon.jsx';
 import Sheet from '../components/Sheet.jsx';
-import { CROP_CATALOG, FLOOD, FORECAST, FORECAST_ADVICE, KAPAWA, PHOTOS, TANKS } from '../data.js';
+import { CROP_CATALOG, FLOOD, FORECAST, FORECAST_ADVICE, PHOTOS, WATER_RELEASE } from '../data.js';
 import TankPicker from '../components/TankPicker.jsx';
-import { useTankForecast } from '../api/useTankForecast.js';
-import { summarize } from '../api/forecast.js';
+import { fmtDay } from '../components/ForecastChart.jsx';
+import { forecastRisk, useFarmReservoirs, useReservoirForecast, useReservoirReadings } from '../api/reservoirs.js';
 import { COLORS } from '../theme.js';
 
 // Standard weather symbols, tinted like Apple Weather (see .wx-* in styles.css).
@@ -15,21 +15,82 @@ const WX_ICON = { sun: 'sun', cloud: 'cloudSun', rain: 'rain' };
 const RISK_KEY ={ spill: 'spillRisk', lowWater: 'lowRisk', stable: 'stable' };
 
 // One-line 14-day outlook inside the tank card; the full chart lives on /forecast.
-function ForecastRow({ tankId, t }) {
-  const { data } = useTankForecast(tankId);
-  const s = data ? summarize(data) : null;
+function ForecastRow({ reservoirId, t }) {
+  const { data, error } = useReservoirForecast(reservoirId);
+  const risk = data ? forecastRisk(data) : null;
+  let line = t('loadingForecast');
+  if (data) line = `${Math.round(data.next)}% ${t('in14')} · ${data.change >= 0 ? '+' : ''}${data.change}%`;
+  else if (error) line = error.reason ? t(error.reason) : error.message;
   return (
-    <Link to={`/forecast?tank=${tankId}`} className="forecast-row">
+    <Link to={`/forecast?reservoir=${reservoirId}`} className="forecast-row">
       <span className="icon-tile blue sm-tile"><Icon name="spark" size={18} /></span>
       <span className="grow min0">
         <span className="block f15 fw600">{t('outlook14')}</span>
-        <span className="block f13 muted">
-          {s ? `${Math.round(s.last.level)}% ${t('in14')} · ${s.trend >= 0 ? '+' : ''}${s.trend}%` : t('loadingForecast')}
-        </span>
+        <span className="block f13 muted">{line}</span>
       </span>
-      {s && <StatusLabel status={s.risk}>{t(RISK_KEY[s.risk])}</StatusLabel>}
+      {risk && <StatusLabel status={risk}>{t(RISK_KEY[risk])}</StatusLabel>}
       <Icon name="chevron" size={18} stroke={2.2} />
     </Link>
+  );
+}
+
+const season = (date) => ([3, 4, 5, 6, 7, 8].includes(date.getMonth()) ? 'Yala' : 'Maha');
+
+// Level, storage and the last week of readings for one reservoir, all from the API.
+function TankCard({ tanks, reservoirId, readings, onPick, lang, t }) {
+  const { data, loading, error, reload } = readings;
+  const latest = data?.latest;
+  const week = (data?.history || []).slice(-7);
+  const prev = week.length > 1 ? week[week.length - 2] : null;
+  const perDay = latest && prev && latest.date > prev.date
+    ? Math.round(((latest.percent - prev.percent) / ((Date.parse(latest.date) - Date.parse(prev.date)) / 864e5)) * 10) / 10
+    : null;
+  const status = latest ? (latest.percent < 30 ? 'low' : 'safe') : null;
+
+  return (
+    <Card>
+      <div className="row gap8 f15 fw600">
+        <Icon name="pin" size={18} />
+        <span className="grow ellipsis">{data?.reservoir.name || tanks.find((x) => x.id === reservoirId)?.name}</span>
+        {latest?.spilling ? <StatusLabel status="spill">{t('spilling')}</StatusLabel> : status && <StatusPill status={status} t={t} />}
+      </div>
+      {tanks.length > 1 && <TankPicker tanks={tanks} value={reservoirId} onChange={onPick} />}
+
+      {!data && loading && <div className="f14 muted">{t('loadingReadings')}</div>}
+      {!data && error && (
+        <div className="row between gap8 f14">
+          <span className="muted">{error.message}</span>
+          <button type="button" className="link-btn" onClick={reload}>{t('tryAgain')}</button>
+        </div>
+      )}
+      {data && !latest && <div className="f14 muted">{t('noReadings')}</div>}
+
+      {latest && (
+        <>
+          <div className="row end gap16">
+            <div>
+              <div className="big-num">{Math.round(latest.percent)}<span>%</span></div>
+              <div className="f14 muted" style={{ marginTop: 6 }}>
+                {t('full')} · {latest.storage?.toLocaleString()}{data.reservoir.capacity ? ` / ${data.reservoir.capacity.toLocaleString()}` : ''} ac-ft
+              </div>
+            </div>
+            <div className="bars" role="img" aria-label={`Tank level over the last ${week.length} readings, now ${latest.percent}%`}>
+              {week.map((h, i) => (
+                <span key={h.date} className={i === week.length - 1 ? 'now' : i > 3 ? 'mid' : ''} style={{ height: `${Math.min(100, h.percent)}%` }} />
+              ))}
+            </div>
+          </div>
+          {latest.spilling && latest.spillRate != null && <div className="f13 muted">{t('spilling')} · {latest.spillRate} cusec</div>}
+          <div className="hr" />
+          <div className="grid3 f13">
+            <div><div className="muted">{t('changeDay')}</div><div className="f15 fw600">{perDay == null ? '–' : `${perDay >= 0 ? '+' : ''}${perDay}%`}</div></div>
+            <div><div className="muted">{t('rainPrevDay')}</div><div className="f15 fw600">{latest.rainMm == null ? '–' : `${latest.rainMm} mm`}</div></div>
+            <div><div className="muted">{t('reading')}</div><div className="f15 fw600">{fmtDay(latest.date, lang, { day: 'numeric', month: 'short' })}</div></div>
+          </div>
+        </>
+      )}
+      <ForecastRow reservoirId={reservoirId} t={t} />
+    </Card>
   );
 }
 
@@ -66,27 +127,22 @@ export function FieldCards({ farm, t }) {
 }
 
 export default function Home() {
-  const { t, user, farm, alerts, showSms, showToast, smsEnabled } = useApp();
-  const [tankId, setTankId] = useState(TANKS[0].id);
-  const [updatedAt, setUpdatedAt] = useState(Date.now() - 20 * 60 * 1000);
-  const [refreshing, setRefreshing] = useState(false);
+  const { t, lang, user, farm, alerts, smsEnabled } = useApp();
+  const tanks = useFarmReservoirs(farm);
+  const [picked, setPicked] = useState(null);
+  const tankList = tanks.data || [];
+  const reservoirId = tankList.some((x) => x.id === picked) ? picked : tankList[0]?.id;
+  const readings = useReservoirReadings(reservoirId);
   const [adviceOpen, setAdviceOpen] = useState(false);
   const [dayIdx, setDayIdx] = useState(0);
   const day = FORECAST[dayIdx];
-  const tank = TANKS.find((x) => x.id === tankId);
   const unread = alerts.filter((a) => !a.read).length;
-  const mins = Math.round((Date.now() - updatedAt) / 60000);
   const firstName = farm?.name?.split(' ')[0];
+  const today = new Date();
 
   const refresh = () => {
-    setRefreshing(true);
-    setTimeout(() => { setRefreshing(false); setUpdatedAt(Date.now()); showToast('Latest readings loaded'); }, 1100);
-  };
-
-  const testSms = () => {
-    if (!smsEnabled) { showToast('Turn on SMS alerts in Profile first', 'error'); return; }
-    showToast(`Test SMS sent to ${maskPhone(user.phone)}`);
-    setTimeout(() => showSms('Yala-Maha Assist: This is a test alert. Your phone can receive emergency warnings.'), 1200);
+    if (!tanks.data) tanks.reload();
+    readings.reload();
   };
 
   return (
@@ -104,8 +160,8 @@ export default function Home() {
           <div className="f15 muted fw500">{t(greetingKey())}{firstName ? `, ${firstName}` : ''}</div>
           <h1 className="h1 xl">{t('farmOverview')}</h1>
         </div>
-        <button type="button" className={`chip-white btn ${refreshing ? 'spinning' : ''}`} onClick={refresh} aria-label="Refresh readings">
-          <Icon name="refresh" size={14} stroke={2.4} /> 25 Oct · Maha
+        <button type="button" className={`chip-white btn ${readings.loading || tanks.loading ? 'spinning' : ''}`} onClick={refresh} aria-label="Refresh readings">
+          <Icon name="refresh" size={14} stroke={2.4} /> {fmtDay(readings.data?.latest?.date || today.toISOString().slice(0, 10), lang, { day: 'numeric', month: 'short' })} · {season(today)}
         </button>
       </div>
 
@@ -128,49 +184,30 @@ export default function Home() {
         </button>
       </Card>
 
-      <Card>
-        <div className="row gap8 f15 fw600">
-          <Icon name="pin" size={18} />
-          <span className="grow ellipsis">{tank.name}</span>
-          <StatusPill status={tank.status} t={t} />
-        </div>
-        <TankPicker value={tankId} onChange={setTankId} />
-        <div className="row end gap16">
-          <div>
-            <div className="big-num">{tank.percent}<span>%</span></div>
-            <div className="f14 muted" style={{ marginTop: 6 }}>{t('full')} · {tank.storage} / {tank.capacity} MCM</div>
+      {reservoirId != null ? (
+        <TankCard tanks={tankList} reservoirId={reservoirId} readings={readings} onPick={setPicked} lang={lang} t={t} />
+      ) : (
+        <Card>
+          <div className="row between gap8 f14">
+            <span className="muted">{tanks.error ? tanks.error.message : t('loadingReadings')}</span>
+            {tanks.error && <button type="button" className="link-btn" onClick={tanks.reload}>{t('tryAgain')}</button>}
           </div>
-          <div className="bars" role="img" aria-label={`Tank level over 7 days, now ${tank.percent}%`}>
-            {tank.history.map((h, i) => (
-              <span key={i} className={i === tank.history.length - 1 ? 'now' : i > 3 ? 'mid' : ''} style={{ height: `${h}%` }} />
-            ))}
-          </div>
-        </div>
-        <div className="hr" />
-        <div className="grid3 f13">
-          <div><div className="muted">{t('inflow')}</div><div className="f15 fw600">{tank.inflow}</div></div>
-          <div><div className="muted">{t('spillAt')}</div><div className="f15 fw600">{tank.spill}%</div></div>
-          <div><div className="muted">{t('updated')}</div><div className="f15 fw600">{mins < 1 ? t('justNow') : `${mins} ${t('minAgo')}`}</div></div>
-        </div>
-        <ForecastRow tankId={tankId} t={t} />
-      </Card>
+        </Card>
+      )}
 
       <Link to="/water" className="card link-card">
-        <div className="row between">
-          <div className="f15 fw600">{t('nextRelease')} · Kapawa</div>
-          <span className="f13 muted font-si">කපාව</span>
-        </div>
+        <div className="f15 fw600">{t('nextRelease')}</div>
         <div className="row gap14">
-          <div className="date-tile"><small>{KAPAWA.next.day}</small><b>{KAPAWA.next.date}</b></div>
+          <div className="date-tile"><small>{WATER_RELEASE.next.day}</small><b>{WATER_RELEASE.next.date}</b></div>
           <div>
-            <div className="f28 fw600 tight">{KAPAWA.next.time}</div>
-            <div className="f14 muted">{KAPAWA.canal} · Channel {KAPAWA.channel}</div>
+            <div className="f28 fw600 tight">{WATER_RELEASE.next.time}</div>
+            <div className="f14 muted">{WATER_RELEASE.canal} · Channel {WATER_RELEASE.channel}</div>
           </div>
         </div>
         <div className="seg seg-soft" aria-label="Water flow status">
-          <span className={KAPAWA.status === 'flowing' ? 'on' : ''}>{t('flowing')}</span>
-          <span className={KAPAWA.status === 'scheduled' ? 'on' : ''}>● {t('scheduled')}</span>
-          <span className={KAPAWA.status === 'closed' ? 'on' : ''}>{t('closed')}</span>
+          <span className={WATER_RELEASE.status === 'flowing' ? 'on' : ''}>{t('flowing')}</span>
+          <span className={WATER_RELEASE.status === 'scheduled' ? 'on' : ''}>● {t('scheduled')}</span>
+          <span className={WATER_RELEASE.status === 'closed' ? 'on' : ''}>{t('closed')}</span>
         </div>
       </Link>
 
@@ -214,7 +251,6 @@ export default function Home() {
           <div className="f15 fw600">{smsEnabled ? t('smsConnected') : `${t('smsAlerts')} · off`}</div>
           <div className="f13 muted">{maskPhone(user.phone)} · {t('worksNoData')}</div>
         </div>
-        <button type="button" className="pill-btn outline sm" onClick={testSms}>{t('testSms')}</button>
       </Card>
 
       <Sheet open={adviceOpen} onClose={() => setAdviceOpen(false)} title={`${FLOOD.river} · ${t('floodWatch')}`}>

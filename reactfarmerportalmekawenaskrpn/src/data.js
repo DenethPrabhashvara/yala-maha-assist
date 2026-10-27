@@ -1,10 +1,5 @@
-// Sample data. Replace with API calls (tank telemetry, river gauges, Kapawa schedule, Text.lk) later.
-
-export const TANKS = [
-  { id: 'kudawewa', name: 'Kudawewa Tank', percent: 72, storage: 11.2, capacity: 15.6, status: 'safe', inflow: '+1.4% / day', spill: 95, history: [58, 60, 62, 61, 66, 69, 72] },
-  { id: 'palugaswewa', name: 'Palugaswewa Tank', percent: 34, storage: 3.1, capacity: 9.2, status: 'low', inflow: '+0.3% / day', spill: 96, history: [41, 40, 38, 37, 36, 35, 34] },
-  { id: 'horabora', name: 'Horabora Wewa', percent: 58, storage: 6.4, capacity: 11.0, status: 'safe', inflow: '+0.8% / day', spill: 95, history: [52, 53, 53, 55, 56, 57, 58], lat: 7.364212, lon: 81.02131 },
-];
+// Sample data. Replace with API calls (river gauges, water release schedule, Text.lk) later.
+// Tank levels and forecasts already come from the API: see api/reservoirs.js.
 
 export const FLOOD = {
   level: 2, maxLevel: 4, severity: 'watch', river: 'Yan Oya', gauge: 4.1, trend: 'rising', peak: 'Thursday evening',
@@ -17,7 +12,7 @@ export const FLOOD = {
   issued: '08:40',
 };
 
-export const KAPAWA = {
+export const WATER_RELEASE = {
   canal: 'Palugaswewa feeder', channel: 'D-4', status: 'scheduled',
   next: { day: 'THU', date: 29, label: 'Thu 29 Oct', time: '6:00 AM', hours: 48 },
   schedule: [
@@ -103,7 +98,7 @@ export const SEED_REPORTS = [
 
 export const SEED_ALERTS = [
   { id: 'a1', kind: 'flood', title: 'Flood watch · Yan Oya', body: 'River may overflow Thursday evening. Move livestock and pumps to higher ground.', when: '08:40', read: false },
-  { id: 'a2', kind: 'kapawa', title: 'Kapawa on Thursday', body: 'Water release to Channel D-4 at 6:00 AM for 48 hours.', when: 'Yesterday', read: false },
+  { id: 'a2', kind: 'release', title: 'Water release on Thursday', body: 'Water release to Channel D-4 at 6:00 AM for 48 hours.', when: 'Yesterday', read: false },
   { id: 'a3', kind: 'tank', title: 'Palugaswewa Tank is low', body: 'Tank at 34%. Use water carefully this week.', when: '22 Oct', read: true },
 ];
 
@@ -127,8 +122,12 @@ export const WATER_SOURCES = [
   { id: 'rain', key: 'wsRain', icon: 'rain' },
 ];
 
-export const CANALS = ['Palugaswewa Feeder Canal', 'Channel D-4', 'Kudawewa left bank canal', 'Horiwila field channel F-2', 'Maradankadawala distributory'];
-export const RIVERS = ['Yan Oya', 'Mahaweli Ganga'];
 
 // Google map defaults (Mahaweli B). Tanks with lat/lon appear on the map and are used for "nearest tank".
 export const MAP_CENTER = { lat: 7.364212, lng: 81.02131 };
+
+export const DISTRICTS = [
+  'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo', 'Galle', 'Gampaha', 'Hambantota', 'Jaffna',
+  'Kalutara', 'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala', 'Mannar', 'Matale', 'Matara', 'Monaragala',
+  'Mullaitivu', 'Nuwara Eliya', 'Polonnaruwa', 'Puttalam', 'Ratnapura', 'Trincomalee', 'Vavuniya',
+];

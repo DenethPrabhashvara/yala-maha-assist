@@ -6,7 +6,7 @@ import Sheet from '../components/Sheet.jsx';
 import { CANAL_SPOTS, ISSUE_TYPES } from '../data.js';
 
 export default function Report() {
-  const { t, reports, update, showSms, showToast, user } = useApp();
+  const { t, reports, update, showToast, user } = useApp();
   const [type, setType] = useState(null);
   const [spot, setSpot] = useState(CANAL_SPOTS[0]);
   const [note, setNote] = useState('');
@@ -30,7 +30,6 @@ export default function Report() {
       setJustSent(rep);
       setBusy(false);
       setType(null); setNote(''); setPhoto(null);
-      showSms(`Yala-Maha Assist: Report ${id} received by the irrigation maintenance desk. An officer will visit within 2 days.`);
     }, 900);
   };
 

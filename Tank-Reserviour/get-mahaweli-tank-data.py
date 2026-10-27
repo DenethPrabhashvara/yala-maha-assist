@@ -29,8 +29,15 @@ CREATE TABLE IF NOT EXISTS mahawelitanks (
   tank_name          TEXT NOT NULL UNIQUE,
   tot_capacity_mcm   NUMERIC(10,3) NOT NULL CHECK (tot_capacity_mcm > 0),
   covered_land_acres NUMERIC(12,2) CHECK (covered_land_acres >= 0),
+  latitude           NUMERIC(10,6) CHECK (latitude  BETWEEN -90  AND 90),
+  longitude          NUMERIC(10,6) CHECK (longitude BETWEEN -180 AND 180),
   createdat          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- For tables created before the coordinates were added.
+-- Coordinates are filled in by hand: the PDF has none, so this script never writes them.
+ALTER TABLE mahawelitanks ADD COLUMN IF NOT EXISTS latitude  NUMERIC(10,6) CHECK (latitude  BETWEEN -90  AND 90);
+ALTER TABLE mahawelitanks ADD COLUMN IF NOT EXISTS longitude NUMERIC(10,6) CHECK (longitude BETWEEN -180 AND 180);
 
 CREATE TABLE IF NOT EXISTS mahaweli_water_level (
   id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -211,34 +218,21 @@ def save_tank_record(cur, record):
     tank_name = record["tank_name"]
     tot_capacity = record.get("gross_capacity_mcm")
     covered_acres = record.get("covered_land_acres")
-
-    find_sql = "SELECT id, tot_capacity_mcm, covered_land_acres FROM mahawelitanks WHERE tank_name = %s"
-    cur.execute(find_sql, [tank_name])
-    existing = cur.fetchone()
-
-    if existing:
-        tank_id, current_capacity, current_acres = existing
-        update_capacity = tot_capacity if (tot_capacity and tot_capacity > 0) else current_capacity
-        update_acres = covered_acres if covered_acres is not None else current_acres
-
-        if update_capacity != current_capacity or update_acres != current_acres:
-            update_sql = """
-                UPDATE mahawelitanks
-                SET tot_capacity_mcm = %s, covered_land_acres = %s
-                WHERE id = %s
-            """
-            cur.execute(update_sql, [update_capacity, update_acres, tank_id])
-        return tank_id
-
     if not tot_capacity or tot_capacity <= 0:
-        tot_capacity = 0.001
+        tot_capacity = None
 
-    insert_sql = """
+    # Inserts a new tank or updates every field the PDF has. latitude/longitude are not in
+    # this statement, so coordinates set by hand are never overwritten.
+    # A missing value keeps what is stored; a brand new tank without capacity gets 0.001.
+    upsert_sql = """
         INSERT INTO mahawelitanks (tank_name, tot_capacity_mcm, covered_land_acres)
-        VALUES (%s, %s, %s)
+        VALUES (%s, COALESCE(%s, 0.001), %s)
+        ON CONFLICT (tank_name) DO UPDATE SET
+            tot_capacity_mcm   = COALESCE(%s, mahawelitanks.tot_capacity_mcm),
+            covered_land_acres = COALESCE(EXCLUDED.covered_land_acres, mahawelitanks.covered_land_acres)
         RETURNING id
     """
-    cur.execute(insert_sql, [tank_name, tot_capacity, covered_acres])
+    cur.execute(upsert_sql, [tank_name, tot_capacity, covered_acres, tot_capacity])
     return cur.fetchone()[0]
 
 
@@ -262,7 +256,12 @@ def save_water_level(cur, tank_id, record):
             storage_percentage, rainfall_24h_mm
         )
         VALUES (%s, %s, %s, %s, %s, %s)
-        ON CONFLICT (tank_id, reading_date) DO NOTHING
+        ON CONFLICT (tank_id, reading_date) DO UPDATE SET
+            water_level_msl    = EXCLUDED.water_level_msl,
+            storage_mcm        = EXCLUDED.storage_mcm,
+            storage_percentage = EXCLUDED.storage_percentage,
+            rainfall_24h_mm    = EXCLUDED.rainfall_24h_mm,
+            recorded_at        = NOW()
     """
     cur.execute(insert_sql, [
         tank_id, reading_date, water_level_msl, storage_mcm,

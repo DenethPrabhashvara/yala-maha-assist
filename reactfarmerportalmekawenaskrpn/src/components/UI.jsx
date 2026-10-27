@@ -138,20 +138,6 @@ export function Toast() {
   );
 }
 
-export function SmsBanner() {
-  const { sms, dismissSms } = useApp();
-  if (!sms) return null;
-  return (
-    <button type="button" className="sms-banner" onClick={dismissSms} key={sms.id} aria-live="polite">
-      <span className="sms-ico"><Icon name="message" size={18} color="#fff" /></span>
-      <span className="sms-text">
-        <span className="row between"><b>{sms.from}</b><small>now</small></span>
-        <span>{sms.body}</span>
-      </span>
-    </button>
-  );
-}
-
 export function OfflineBanner() {
   const { t } = useApp();
   const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false);

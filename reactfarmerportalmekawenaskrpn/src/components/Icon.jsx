@@ -1,7 +1,7 @@
 import {
   ArrowRight, Bell, CircleCheck, CloudSun, Inbox, OctagonAlert, Camera, Carrot, Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock, Cloud,
   CloudRain, Construction, Droplet, Droplets, Ellipsis, Fence, Globe, House, Info, Leaf, LocateFixed, Lock, LogOut,
-  Map, MapPin, MessageSquare, MessageSquareText, Mic, Plus, RefreshCw, Search, Send, Sparkles, SquarePen, Sun,
+  Map, MapPin, MessageSquareText, Mic, Plus, RefreshCw, Search, Send, Sparkles, SquarePen, Sun,
   Trash2, TriangleAlert, User, Waves, WifiOff, X,
 } from 'lucide-react';
 
@@ -27,7 +27,6 @@ const P = {
   rain: CloudRain,
   spark: Sparkles,
   sms: MessageSquareText,
-  message: MessageSquare,
   check: Check,
   blockage: Construction,
   leak: Droplets,

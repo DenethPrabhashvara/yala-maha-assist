@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { formatPhone, useApp } from '../state/AppContext.jsx';
+import { emptyDraft, formatPhone, useApp } from '../state/AppContext.jsx';
 import { IconBtn, PrimaryBtn } from '../components/UI.jsx';
 import Icon from '../components/Icon.jsx';
-import { makeCode } from './Login.jsx';
+import { sendOtp, verifyOtp } from '../api/auth.js';
 
 const RESEND_SECONDS = 60;
 
 export default function Otp() {
-  const { t, pendingPhone, otpCode, otpSentAt, update, showSms, showToast, farm } = useApp();
+  const { t, pendingPhone, otpSentAt, update, showToast } = useApp();
   const navigate = useNavigate();
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
@@ -23,21 +23,31 @@ export default function Otp() {
 
   const left = Math.max(0, RESEND_SECONDS - Math.floor((now - (otpSentAt || 0)) / 1000));
 
-  const verify = (code) => {
-    if (code.length < 6) return;
+  const verify = async (code) => {
+    if (code.length < 6 || busy) return;
     setBusy(true);
-    setTimeout(() => {
-      if (code === otpCode) {
-        update({ user: { phone: pendingPhone }, otpCode: null });
-        showToast('Signed in');
-        navigate(farm ? '/home' : '/register/identity', { replace: true });
+    try {
+      const { alreadyRegistered } = await verifyOtp(pendingPhone, code);
+      if (alreadyRegistered) {
+        // The account exists: the API signs in with phone + NIC.
+        navigate('/signin', { replace: true });
       } else {
-        setBusy(false);
-        setError(t('wrongCode'));
-        setDigits(['', '', '', '', '', '']);
-        refs.current[0]?.focus();
+        // Verified for 15 minutes on the API; the farm form ends with POST /register.
+        update((s) => ({
+          user: { phone: pendingPhone, pendingRegistration: true },
+          farm: null,
+          // Keep a half-filled form only for the number that started it.
+          draft: s.draft.owner === pendingPhone ? s.draft : { ...emptyDraft(), owner: pendingPhone },
+        }));
+        showToast(t('phoneVerified'));
+        navigate('/register/identity', { replace: true });
       }
-    }, 500);
+    } catch (err) {
+      setBusy(false);
+      setError(err.status === 400 ? t('wrongCode') : err.message);
+      setDigits(['', '', '', '', '', '']);
+      refs.current[0]?.focus();
+    }
   };
 
   const setAt = (i, v) => {
@@ -59,11 +69,16 @@ export default function Otp() {
     if (next.every(Boolean)) verify(next.join(''));
   };
 
-  const resend = () => {
-    const code = makeCode();
-    update({ otpCode: code, otpSentAt: Date.now() });
-    showSms(`Your Yala-Maha Assist code is ${code}. It expires in 5 minutes. Do not share it.`);
-    setNow(Date.now());
+  const resend = async () => {
+    try {
+      await sendOtp(pendingPhone);
+      update({ otpSentAt: Date.now() });
+      setNow(Date.now());
+      setError('');
+      showToast(t('codeResent'));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -92,10 +107,6 @@ export default function Otp() {
           ? <span className="chip-white"><Icon name="clock" size={14} stroke={2.2} />{t('resendIn')} 0:{String(left).padStart(2, '0')}</span>
           : <button type="button" className="chip-white btn" onClick={resend}><Icon name="refresh" size={14} stroke={2.2} />{t('resend')}</button>}
       </div>
-
-      <button type="button" className="hint-box" onClick={() => showSms(`Your Yala-Maha Assist code is ${otpCode}. It expires in 5 minutes. Do not share it.`)}>
-        <Icon name="info" size={16} /> Demo: tap to show the SMS again
-      </button>
 
       <div className="grow" />
       <PrimaryBtn onClick={() => verify(digits.join(''))} disabled={busy || digits.some((d) => !d)}>{busy ? '…' : t('verify')}</PrimaryBtn>

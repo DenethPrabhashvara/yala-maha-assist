@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS mahawelitanks (
   tank_name          TEXT NOT NULL UNIQUE,
   tot_capacity_mcm   NUMERIC(10,3) NOT NULL CHECK (tot_capacity_mcm > 0),
   covered_land_acres NUMERIC(12,2) CHECK (covered_land_acres >= 0),
+  latitude           NUMERIC(10,6) CHECK (latitude  BETWEEN -90  AND 90),   -- set by hand, not by get-mahaweli-tank-data.py
+  longitude          NUMERIC(10,6) CHECK (longitude BETWEEN -180 AND 180),
   createdat          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -59,6 +61,9 @@ CREATE INDEX idx_levels_lookup ON reservoir_levels (reservoir_id, reading_date D
 --CREATE A DATABASES WITH : 
 CREATE TABLE IF NOT EXISTS farmers (
   farmer_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id         TEXT NOT NULL UNIQUE                           -- shown to the farmer, e.g. FAR-3FEEFE
+                  DEFAULT ('FAR-' || upper(substr(md5(gen_random_uuid()::text), 1, 6)))
+                  CHECK (farm_id ~ '^FAR-[0-9A-F]{6}$'),
   full_name       TEXT NOT NULL,
   hashed_nic      TEXT unique not NULL,
   phone           TEXT unique not NULL,
@@ -100,6 +105,38 @@ CREATE TRIGGER trg_farmers_updated_at
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 
+-- Farm details, one farm per farmer (farmers.farm_id). land_acres and primary_crop on
+-- farmers are kept as the total and the first crop of farm_crops.
+CREATE TABLE IF NOT EXISTS farms (
+  farm_id         TEXT PRIMARY KEY REFERENCES farmers(farm_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  water_source    TEXT CHECK (water_source IN ('tank', 'canal', 'river', 'well', 'rain')),
+  water_name      TEXT,           -- tank / canal / river name as the farmer gave it
+  location_label  TEXT,           -- nearest place to the farm pin, as shown in the portal
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+DROP TRIGGER IF EXISTS trg_farms_updated_at ON farms;
+CREATE TRIGGER trg_farms_updated_at
+  BEFORE UPDATE ON farms
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- A farm can grow several crops
+CREATE TABLE IF NOT EXISTS farm_crops (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  farm_id     TEXT NOT NULL REFERENCES farms(farm_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  position    SMALLINT NOT NULL CHECK (position >= 0),   -- order the farmer listed them; 0 is the main crop
+  category    TEXT,                                      -- 'paddy', 'vegetables', ... (NULL if not known)
+  crop_type   TEXT NOT NULL,
+  variety     TEXT,
+  acres       NUMERIC(10,2) NOT NULL CHECK (acres > 0),
+  last_yield  NUMERIC(12,2) CHECK (last_yield >= 0),     -- per acre, in yield_unit
+  yield_unit  TEXT CHECK (yield_unit IN ('kg', 'bu', 't')),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_farm_crop_position UNIQUE (farm_id, position)
+);
+
+
 
 
   -- for farmer sessions,
@@ -134,6 +171,23 @@ CREATE TABLE IF NOT EXISTS admins (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_login_at  TIMESTAMPTZ
 );
+
+-- Admin portal sign-ins (refresh tokens), like farmer_sessions
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id           UUID NOT NULL REFERENCES admins(admin_id) ON DELETE CASCADE,
+  refresh_token_hash CHAR(64) NOT NULL UNIQUE
+                     CHECK (refresh_token_hash ~ '^[0-9a-f]{64}$'),   -- SHA-256 hex of the token
+  ip                 INET NOT NULL,
+  user_agent         TEXT NOT NULL,
+  revoked_at         TIMESTAMPTZ,
+  expires_at         TIMESTAMPTZ NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_used_at       TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin   ON admin_sessions (admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires ON admin_sessions (expires_at);
 
 
 
@@ -170,7 +224,8 @@ CREATE TABLE IF NOT EXISTS rainfall_realtime (
 );
 
 
-CREATE TABLE IF NOT EXISTS water_issueing_schedule (
+-- Mahaweli water issue schedule, loaded by Tank-Reserviour/add-cropcalendertodb.py
+CREATE TABLE IF NOT EXISTS water_issue_schedule (
     id SERIAL PRIMARY KEY,
     no INT,
     tank_name TEXT NOT NULL,
@@ -185,5 +240,20 @@ CREATE TABLE IF NOT EXISTS water_issueing_schedule (
     other_crops_target_area NUMERIC,
     other_crops_area_percentage NUMERIC,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_tank_section_start UNIQUE (tank_name, section, water_start)
+    CONSTRAINT uq_tank_section_start UNIQUE NULLS NOT DISTINCT (tank_name, section, water_start)
 );
+
+-- SMS campaigns sent from the admin portal (one row per send)
+CREATE TABLE IF NOT EXISTS sms_campaigns (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  admin_id    UUID REFERENCES admins(admin_id) ON DELETE SET NULL,
+  audience    TEXT NOT NULL,
+  message     TEXT NOT NULL,
+  recipients  INT NOT NULL CHECK (recipients >= 0),
+  delivered   INT NOT NULL DEFAULT 0 CHECK (delivered >= 0),
+  failed      INT NOT NULL DEFAULT 0 CHECK (failed >= 0),
+  dry_run     BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sms_campaigns_created ON sms_campaigns (created_at DESC);

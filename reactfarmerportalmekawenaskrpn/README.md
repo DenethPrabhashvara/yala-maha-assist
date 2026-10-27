@@ -1,6 +1,6 @@
 # Yala-Maha Assist — Farmer Portal
 
-Mobile-first React + Vite app for smallholder farmers in the Mahaweli B zone: flood warnings, tank levels, Kapawa water-release times, canal issue reports and 4-stage farm registration, in English, Sinhala and Tamil.
+Mobile-first React + Vite app for smallholder farmers in the Mahaweli B zone: flood warnings, tank levels, water release times, canal issue reports and 4-stage farm registration, in English, Sinhala and Tamil.
 
 ## Run it
 
@@ -27,8 +27,8 @@ On a desktop browser the app shows inside a phone frame; on a phone it fills the
 | `/welcome` | 3-slide onboarding (swipe or tap) |
 | `/language` | English / සිංහල / தமிழ் |
 | `/login` → `/otp` | Phone number + 6-digit SMS code with 60 s resend timer |
-| `/home` | Flood alert, tank level (switch tanks), Kapawa, 3-day rain + advice, my fields, test SMS |
-| `/water` | Aerial tank & canal map, 7-day tank chart, Kapawa schedule, SMS reminder |
+| `/home` | Flood alert, tank level (switch tanks), next water release, 3-day rain + advice, my fields |
+| `/water` | Aerial tank & canal map, 7-day tank chart, water release schedule, SMS reminder |
 | `/forecast?tank=horabora` | 14-day ML tank-level forecast: chart with likely range, spill/low lines, daily rain, day-by-day list, risk and advice |
 | `/report` | Canal issue report (type, place, notes, photo) + "My reports" |
 | `/alerts` | Notifications with unread state |
@@ -47,36 +47,29 @@ An offline banner appears when the phone loses its connection.
 
 ## Demo behaviour
 
-- **SMS is simulated.** Text.lk messages appear as a phone-style notification at the top. The OTP code shown there is the one that works.
-- Data is saved in the browser (`localStorage`). Profile → "Reset demo data" starts over.
-- Tank, river, Kapawa and weather numbers are sample data in `src/data.js`.
+- **Sign-in is real.** The OTP is sent by the API (`API/routes/authroutes.js`) through Text.lk. Set `SMS_DRY_RUN=true` in the API to print codes in its console instead.
+- Farm details are also kept in the browser (`localStorage`). Profile → "Reset demo data" signs out and starts over.
+- Tank levels and forecasts come from the API. River, water release and weather numbers are still sample data in `src/data.js`.
 
-## Forecast API contract
+## Tank data and forecast
 
-The app calls `GET {VITE_API_URL}/api/forecast/tanks/{tankId}?days=14` (React → Express → FastAPI).
-Copy `.env.example` to `.env` and set `VITE_API_URL` to your Express server. Without it, or if the call fails,
-the app shows sample predictions labelled "Sample data".
+`npm run dev` proxies `/api` to the Express API (`AUTH_API_PROXY` in `.env`, default `http://127.0.0.1:8005`).
+`src/api/reservoirs.js` reads, per reservoir id from the `reservoirs` table:
 
-```json
-{
-  "tank_id": "horabora",
-  "tank_name": "Horabora Wewa",
-  "generated_at": "2026-10-25T06:00:00+05:30",
-  "model_version": "rf-v1",
-  "unit": "percent",
-  "thresholds": { "low": 30, "spill": 95 },
-  "history":  [{ "date": "2026-10-19", "level_pct": 52.0 }],
-  "forecast": [{ "date": "2026-10-26", "level_pct": 59.1, "lower": 57.8, "upper": 60.4, "rain_mm": 4.2 }]
-}
-```
+| Endpoint | Used for |
+|---|---|
+| `GET /api/data/reservoir` | the farmer's reservoir and the nearest others (tank chips) |
+| `GET /api/data/reservoir/:id` | name, capacity and the latest reading (Home tank card) |
+| `GET /api/data/reservoir/:id/history?days=14` | the last 7 readings (Home bars, Water chart) |
+| `GET /api/data/reservoir/:id/forecast` | the ML forecast (Home "Next 14 days", forecast screen) |
 
-- `forecast` should have 14 items. `lower`/`upper` (likely range) are optional; without them the app draws ±2%.
-- `history` (last 7 observed days) is optional; without it the app uses its own sample history.
-- Tank ids must match `TANKS` in `src/data.js` (`kudawewa`, `palugaswewa`, `horabora`) — add your other tanks there.
-- `server-examples/` has a ready Express route and a FastAPI endpoint that returns this shape using Open-Meteo rain.
+The farm's reservoir is `farm.reservoirId` (the farmer's `reservoir_id`). Farms on a canal, river or well show the reservoir nearest to the pin.
+There is no sample data: if a request fails the card says why, with a retry.
 
-The forecast drives: the Home "Next 14 days" card, the forecast screen, and the risk label
-("May reach spill level" if the upper range touches the spill line, "May fall low" if the lower range reaches the low line).
+The forecast endpoint sends the reservoir's `gross_storage_acft` readings of the last 90 days to the model service (`ml-model/server.js`,
+`FORECAST_API_URL` in the API). The model only knows the 43 reservoirs in `ml-model/tank_model.json`; other reservoirs show
+"No forecast model for this reservoir yet". It returns one prediction 14 days ahead (not a daily series), as a fill % of gross capacity.
+Risk label: "May reach spill level" at 95% or more, "May fall low" at 30% or less.
 
 ## Maps (farm pin)
 
@@ -103,7 +96,8 @@ The pins use Advanced Markers, which need a Map ID. `DEMO_MAP_ID` is used by def
 If the key is rejected, the pin step falls back to the free map.
 GPS ("Use my location") needs HTTPS on a real phone (localhost is fine for testing).
 
-Tanks appear on the map and count for "nearest tank" only if they have `lat`/`lon` in `TANKS` (`src/data.js`). Only Horabora Wewa has coordinates now: add the others.
+The tanks on the maps and in the water-source search are `RESERVOIRS` in `src/reservoirs.js`, generated from `reservoirs_data.json` by `npm run reservoirs`.
+`aka` holds other spellings farmers may search for (the Mahaweli Authority names, e.g. Rajanganaya for Rajangana).
 
 The saved pin is `draft.pin = { lat, lng, accuracy? }`, with `draft.located = true` once GPS has succeeded. The water answer is `draft.water = { source, name }`, where `source` is one of `tank | canal | river | well | rain`.
 
@@ -128,10 +122,11 @@ Swap in your own field photos by replacing the files (keep them around 960 px wi
 
 | What | Where to change |
 |---|---|
-| Send / verify OTP via Text.lk | `src/pages/Login.jsx` (`submit`) and `src/pages/Otp.jsx` (`verify`) — call your backend; never put the Text.lk API key in the frontend |
-| Tank / canal / river lists for the water-source step | `TANKS`, `CANALS`, `RIVERS` in `src/data.js` |
-| Tank levels, river gauges, Kapawa, forecast | Replace the exports in `src/data.js` with API calls (e.g. Open-Meteo for rain) |
-| Submit reports & registrations | `src/pages/Report.jsx` (`submit`), `src/pages/register/RegReview.jsx` (`submit`) |
+| Sign-in and registration | Done: `src/api/auth.js` (OTP, register, NIC sign-in, token refresh, profile update) |
+| Tank levels and forecast | Done: `src/api/reservoirs.js` |
+| Tank / canal / river lists for the water-source step | `src/reservoirs.js` (generated), `CANALS`, `RIVERS` in `src/data.js` |
+| River gauges, water release schedule, weather | Replace the exports in `src/data.js` with API calls (e.g. Open-Meteo for rain) |
+| Submit reports | `src/pages/Report.jsx` (`submit`) |
 | Translations | `src/i18n.js` — Sinhala and Tamil should be checked by a native speaker |
 | Help contacts | `src/pages/Profile.jsx` — replace the `[OFFICER NAME]`, `[PHONE]`, `[ADDRESS]` placeholders |
 

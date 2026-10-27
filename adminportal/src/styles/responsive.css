@@ -1,0 +1,260 @@
+/* ============================================================
+   Responsive refinements
+   ============================================================ */
+
+@media (max-width: 1500px) {
+  .topbar-date { display: none; }
+}
+
+@media (max-width: 1380px) {
+  .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .global-search { max-width: 340px; }
+  .profile-copy { max-width: 110px; }
+}
+
+@media (max-width: 1220px) {
+  .global-search { max-width: 280px; }
+  .global-search > span { font-size: 12px; }
+  .profile-copy { display: none; }
+  .profile-chevron { display: none; }
+  .profile-trigger { padding: 4px; }
+  .topbar { padding: 0 18px; }
+  .app-content { padding: 20px 18px 0; }
+  .dashboard-grid .span-8,
+  .dashboard-grid .span-7,
+  .dashboard-grid .span-5,
+  .dashboard-grid .span-4 { grid-column: span 12; }
+  .status-body { justify-content: center; }
+  .status-legend { max-width: 260px; }
+  .status-card .status-body .donut-wrap { max-width: 220px; }
+  .river-grid .span-8,
+  .river-grid .span-4 { grid-column: span 12; }
+  .station-snapshot { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  .station-snapshot .card-header { width: 100%; }
+  .snapshot-body { flex: 1; min-width: 340px; flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .snapshot-gauge { flex: 1; min-width: 180px; }
+  .snapshot-status { flex: 1; min-width: 160px; }
+  .snapshot-stats { flex: 1; min-width: 240px; }
+  .snapshot-spark { flex: 1; min-width: 220px; }
+  .snapshot-actions { width: 100%; border-top: 1px solid var(--border); }
+  .map-layout { grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr); }
+  .sms-grid .span-7 { grid-column: span 12; }
+  .side-stack { grid-column: span 12; flex-direction: row; align-items: stretch; }
+  .side-stack > .card { flex: 1; }
+  .phone-preview { min-height: 300px; }
+  .farmer-charts .span-7,
+  .farmer-charts .span-5,
+  .farmer-charts .span-8,
+  .farmer-charts .span-4 { grid-column: span 12; }
+  .advisory-layout .span-8,
+  .advisory-layout .span-4 { grid-column: span 12; }
+  .settings-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: var(--sidebar-w) !important;
+    z-index: 46;
+    box-shadow: 4px 0 16px rgba(9, 9, 11, 0.12);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  .sidebar.is-collapsed .brand-copy,
+  .sidebar.is-collapsed .nav-copy,
+  .sidebar.is-collapsed .nav-chevron,
+  .sidebar.is-collapsed .nav-count,
+  .sidebar.is-collapsed .sidebar-label,
+  .sidebar.is-collapsed .sidebar-season,
+  .sidebar.is-collapsed .sidebar-status span,
+  .sidebar.is-collapsed .sidebar-status small {
+    display: flex;
+  }
+  .sidebar.is-collapsed .nav-copy small { display: none; }
+  .sidebar.is-collapsed .sidebar-brand { justify-content: space-between; padding: 0 16px; }
+  .sidebar.is-collapsed .sidebar-nav { padding: 10px 12px; align-items: stretch; }
+  .sidebar.is-collapsed .nav-item { justify-content: flex-start; padding: 8px 10px; }
+  .sidebar.is-collapsed .sidebar-footer { padding: 0 12px 8px; }
+  .sidebar.is-collapsed .sidebar-status { justify-content: flex-start; padding: 10px 9px 4px; }
+  .sidebar-collapse { display: none; }
+  .sidebar-close { display: grid; }
+  .app-main,
+  .sidebar-collapsed .app-main { margin-left: 0; }
+  .mobile-menu { display: inline-grid; }
+  .topbar { padding: 0 16px; gap: 12px; }
+  .topbar-breadcrumb { display: none; }
+  .topbar-brand .brand-copy small { display: none; }
+  .app-content { padding: 20px 16px 0; }
+  .global-search { max-width: 260px; }
+  .live-pill { display: none; }
+  .map-layout { grid-template-columns: 1fr; }
+  .map-canvas { border-right: 0; border-bottom: 1px solid var(--border); }
+  .map-side { display: grid; grid-template-columns: 1fr 1fr; }
+  .map-focus { border-right: 1px solid var(--border); border-bottom: 0; }
+  .tank-map { max-height: 480px; }
+}
+
+@media (max-width: 860px) {
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mini-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page-header { align-items: flex-start; }
+  .page-header-actions { width: 100%; }
+  .global-search { display: none; }
+  .topbar-actions { gap: 2px; }
+  .topbar { gap: 8px; }
+  .app-footer { justify-content: center; text-align: center; }
+  .category-grid,
+  .group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .map-side { grid-template-columns: 1fr; }
+  .map-focus { border-right: 0; border-bottom: 1px solid var(--border); }
+  .flood-banner { flex-wrap: wrap; }
+  .flood-banner-copy { min-width: 200px; }
+  .flood-banner-actions { width: 100%; justify-content: flex-end; }
+  .hydro-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .schedule-item { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; }
+  .schedule-crops { display: none; }
+  .side-stack { flex-direction: column; }
+  .station-snapshot { flex-direction: column; }
+  .snapshot-body { flex-direction: column; align-items: stretch; min-width: 0; }
+  .snapshot-gauge { max-width: 220px; margin: 0 auto; width: 100%; }
+  .snapshot-stats { min-width: 0; }
+  .snapshot-actions { border-top: 1px solid var(--border); }
+}
+
+@media (max-width: 700px) {
+  .app-content { padding: 16px 14px 0; }
+  .topbar { padding: 0 14px; }
+  .page { gap: 16px; }
+  .kpi-grid { gap: 10px; }
+  .mini-stat-grid { gap: 10px; }
+  .dashboard-grid,
+  .river-grid,
+  .sms-grid,
+  .farmer-charts,
+  .advisory-layout { gap: 12px; }
+  .kpi-card { padding: 14px 16px; gap: 10px; }
+  .kpi-value { font-size: 23px; }
+  .mini-stat { padding: 13px; }
+  .mini-stat strong { font-size: 19px; }
+  .mini-stat small { white-space: normal; }
+  .card-header { padding: 13px 15px; gap: 10px; flex-wrap: wrap; }
+  .card-action { margin-left: auto; }
+  .card-body { padding: 14px 15px; }
+  .card-footer { padding: 11px 15px; flex-wrap: wrap; }
+  .chart-legend { padding: 8px 15px 0; }
+  .chart-note { display: none; }
+  .chart-box { padding: 5px 6px; }
+  .chart-caption { padding: 0 15px 12px; }
+  .status-body { padding: 4px 12px; }
+  .spill-strip { padding: 10px 14px; }
+  .district-foot { margin: 0 15px 13px; }
+  .table-footer { padding: 11px 15px; }
+  .filter-card { padding: 12px 13px 9px; }
+  .filter-row { gap: 8px; }
+  .search-field { min-width: 100%; flex-basis: 100%; }
+  .select-field { flex: 1; min-width: 118px; }
+  .view-toggle { margin-left: 0; flex: 0 0 auto; }
+  .filter-meta-right { display: none; }
+  .page-header h1 { font-size: 24px; }
+  .page-header-actions .btn { flex: 1; }
+  .flood-banner { padding: 12px; align-items: flex-start; }
+  .flood-banner-actions .btn { flex: 1; }
+  .settings-card-footer { align-items: flex-start; flex-direction: column; }
+  .settings-card-footer .btn { width: 100%; }
+  .station-strip-card { padding: 12px 12px 12px; }
+  .station-chip { flex-basis: 148px; }
+  .hydro-metrics { margin: 10px 14px 0; }
+  .chart-caption { font-size: 9.5px; }
+  .page-tabs { gap: 1px; }
+  .page-tab { padding: 8px 9px 9px; font-size: 11.5px; }
+  .advisory-list { padding: 12px 13px 14px; }
+  .schedule-item { grid-template-columns: minmax(0, 1.4fr) auto; gap: 8px 10px; padding: 12px 14px; }
+  .schedule-progress { grid-column: 1 / -1; }
+  .schedule-area { display: none; }
+  .schedule-toolbar { padding: 10px 13px; }
+  .schedule-toolbar .search-field { max-width: 100%; }
+  .composer-body { padding: 12px 15px 15px; }
+  .composer-footer { padding: 11px 15px; }
+  .group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .side-stack > .card { width: 100%; }
+  .phone-preview { padding: 14px; }
+  .map-canvas { padding: 14px 12px 12px; }
+  .map-side { padding: 0; }
+  .map-focus { padding: 15px; }
+  .map-list { padding: 12px 15px 14px; }
+  .tank-detail-top { flex-direction: column; align-items: stretch; gap: 10px; }
+  .tank-detail-gauge { width: 100%; max-width: 230px; margin: 0 auto; }
+  .drawer-body { padding: 16px; }
+  .drawer-header { padding: 15px 16px; }
+  .drawer-footer { padding: 12px 16px; }
+  .drawer-actions .btn { flex: 1; }
+  .modal { max-height: 90vh; }
+  .modal-body { padding: 16px; }
+  .modal-header { padding: 15px 16px; }
+  .modal-footer { padding: 12px 16px; }
+  .notification-popover { width: min(360px, calc(100vw - 28px)); right: -46px; }
+  .toast-viewport { right: 12px; bottom: 12px; }
+  .palette-overlay { padding: 10px; padding-top: 6vh; }
+  .palette-footer span:nth-child(3) { display: none; }
+  .palette-footer-brand { display: none !important; }
+  .app-footer { font-size: 10.5px; padding: 20px 0 16px; }
+  .app-footer-meta { display: none !important; }
+}
+
+@media (max-width: 520px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 9px; }
+  .mini-stat-grid { grid-template-columns: 1fr; }
+  .mini-stat { padding: 12px; }
+  .mini-stat small { white-space: nowrap; }
+  .page-header-actions { flex-direction: column; align-items: stretch; }
+  .page-header-actions .btn { width: 100%; flex: none; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .span-2 { grid-column: span 1; }
+  .group-grid { grid-template-columns: 1fr 1fr; }
+  .theme-options { padding: 13px 14px 11px; }
+  .theme-option { align-items: flex-start; flex-wrap: wrap; }
+  .theme-option-copy { flex: 1; }
+  .settings-account-meta { padding-right: 14px; padding-left: 14px; }
+  .settings-profile { padding-right: 14px; padding-left: 14px; }
+  .settings-toggle-list { padding-right: 14px; padding-left: 14px; }
+  .settings-inline-note { padding-right: 14px; padding-left: 14px; }
+  .detail-stat-grid { grid-template-columns: 1fr; }
+  .status-body { flex-direction: column; align-items: center; }
+  .status-body .donut-wrap { width: 62%; max-width: 190px; }
+  .status-legend { width: 100%; max-width: none; padding: 0 4px; }
+  .status-legend-row { padding: 0 4px; }
+  .flood-banner-icon { width: 36px; height: 36px; }
+  .flood-banner-copy strong { font-size: 12px; }
+  .flood-banner-copy span { font-size: 11px; }
+  .snapshot-body { padding: 4px 14px 8px; }
+  .snapshot-actions { padding: 10px 14px; }
+  .schedule-item { grid-template-columns: 1fr; }
+  .schedule-status { justify-content: flex-start; }
+  .station-reading strong { font-size: 11.5px; }
+  .phone-frame { width: 232px; }
+  .notification-popover { right: -76px; }
+  .profile-popover { right: 0; width: 250px; }
+  .table-footer { flex-direction: column; align-items: flex-start; gap: 9px; }
+  .filter-meta { font-size: 10.5px; }
+  .palette-item-type { display: none; }
+  .app-footer .footer-mark { display: none; }
+  .topbar-actions .theme-toggle { display: none; }
+  .topbar-brand .brand-copy { display: none; }
+}
+
+@media (max-width: 400px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .kpi-label { white-space: normal; }
+  .group-grid { grid-template-columns: 1fr; }
+  .notification-popover { width: calc(100vw - 20px); right: -8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

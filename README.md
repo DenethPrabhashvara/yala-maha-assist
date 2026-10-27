@@ -48,40 +48,16 @@ yala-maha-assist/
 │   │   ├── alertservice.js          # Threshold checking & automated flood warnings
 │   │   └── smsService.js            # Text.lk integration, OTP store & normalization
 │   └── package.json                 # API dependencies
-├── Controllers/                     # HTML page controllers
-│   └── controller.js                # Serves HTML views
 ├── Tank-Reserviour/                 # Data extraction utilities
 │   ├── get-mahaweli-tank-data.py    # Extract data from Mahaweli Authority PDFs
 │   ├── get-realtime-river-levels.py # Fetch recent river-gauge readings from ArcGIS
 │   ├── cropcalender.pdf             # Crop calendar reference
 │   ├── daily_download_pdfs.py       # Automated PDF downloader
 │   └── tank-dat.pdf                 # Tank data reference
-├── public/                          # Static web assets served by main web server
-│   ├── farmer-portal.html           # Standalone mobile-responsive Farmer Portal
-│   ├── yala-maha-assist.html        # Main operations management dashboard
-│   ├── css/style.css                # Central design system stylesheet
-│   └── js/                          # Client-side modules (mirrored for web serving)
-├── js/                              # Modular frontend components
-│   ├── app.js                       # Main application shell & tab switcher
-│   ├── farmer-portal.js             # Farmer Portal UI, SMS OTP & 4-step registration
-│   ├── sms-gateway.js               # SMS broadcast composer & audit history
-│   ├── dashboard.js                 # Tank level charts & rainfall visualizers
-│   ├── coverage-map.js              # Farm plots & signal coverage evaluation
-│   ├── schematic-map.js             # SVG schematic canal/tank map generator
-│   ├── river-monitoring.js          # Flood prediction & gauge monitoring
-│   ├── river-gauges.js              # River gauge data processor
-│   ├── river-forecast.js            # Open-Meteo weather integration
-│   ├── river-risk.js                # Multi-source flood risk calculator
-│   ├── translations.js              # Central trilingual dictionary (EN / SI / TA)
-│   └── icons.js                     # Centralized SVG icons
-├── css/
-│   └── style.css                    # Unified design tokens, components & responsive layout
-├── farmer-portal.html               # Clean, card-based Farmer Portal entry page
-├── yala-maha-assist.html            # Unified operations dashboard
-├── farm-config.js                   # Farm datasets, crop hierarchy & NIC validator
-├── river-config.js                  # River monitoring configurations & gauge thresholds
-├── server.js                        # Main HTTP web server entry point (Port 3007)
-├── package.json                     # Main web dependencies & scripts
+├── adminportal/                     # Admin portal (React + Vite), see adminportal/README.md
+├── reactfarmerportalmekawenaskrpn/  # Farmer portal (React + Vite)
+├── ml-model/                        # Tank forecast model & service (Port 5000)
+├── package.json                     # Root dependencies for the ML service (npm run ml)
 └── README.md                        # Project documentation
 ```
 
@@ -218,26 +194,57 @@ node server.js
 npm run api
 ```
 
-#### Start the React + Vite frontend:
+#### Start the admin portal (`adminportal/`):
 ```bash
+cd adminportal
+npm install
 npm run dev
 ```
-The frontend reads tank data from `http://127.0.0.1:8005/api`. Set `VITE_API_BASE` to change the API base URL.
-Create a production bundle with `npm run build`, or serve it locally with `npm run preview`.
+The admin portal (React 19, Vite, Recharts) has the Dashboard, Tanks & Reservoirs, Rivers, SMS, Farmers, Database and Settings pages, all reading the API's `/admin` routes. Its dev server proxies `/admin` to the API on port 8005, so start the API first, and create the first account with `node scripts/create-admin.js` (in `API/`). See `adminportal/README.md`.
 
-### React Frontend Structure
-- `src/App.jsx` coordinates screen selection, shared data hooks, and the top-level layout.
-- `src/components/` contains the navigation, dashboard, coverage screen, reusable tank table, placeholders, and shared UI.
-- `src/hooks/` loads tank and reservoir data from the API.
-- `src/api/` contains API request and record-formatting helpers.
+#### Start the farmer portal (`reactfarmerportalmekawenaskrpn/`):
+```bash
+cd reactfarmerportalmekawenaskrpn
+npm install
+npm run dev
+```
+See `reactfarmerportalmekawenaskrpn/README.md`.
 
-The React dashboard currently uses the working `GET /mahaweli` and `GET /reservoir` routes. It requests `/mahaweli` with `Accept: */*` because the current API returns CSV for an explicit `Accept: application/json` request; `/reservoir` returns JSON. The tank forecast is available through `GET /api/forecast/:id`; river gauges, SMS dispatch, and farmer registration remain UI placeholders until supported routes are available.
-
-When a reservoir is selected, the dashboard also loads its metadata from `/reservoir/:id` and up to 30 days of readings from `/reservoir/:id/history`. History fields such as `water_depth_ft`, `usable_storage_percent`, and `rainfall_prev_day_mm` drive the selected-reservoir overview and charts; rainfall is displayed as reported history, not as a forecast.
+#### Start the ML forecast service (Port 5000):
+```bash
+npm install
+npm run ml
+```
 
 ---
 
 ## API Endpoints
+
+### 🔐 Admin API (`/admin`, admin portal only)
+
+Admins sign in with a username and password. Farmer tokens are never accepted here: admin tokens are signed with `JWT_ADMIN_SECRET` (which must differ from `JWT_SECRET`), carry `role: "admin-yalamaha"`, and must belong to an open row in `admin_sessions`.
+
+Set up once: run `API/models/add-admin-sessions.sql`, then create the first account with `cd API && node scripts/create-admin.js <username> "<full name>" super_admin`.
+
+| Method | Endpoint | Who | Description |
+|--------|----------|-----|-------------|
+| `POST` | `/admin/auth/login` | anyone | `{ username, password }` → `accessToken` (15 min) + `adminRefreshToken` cookie (7 days). 5 wrong passwords lock the username for 15 minutes. |
+| `POST` | `/admin/auth/refresh_token` | cookie | New access token; the refresh token is rotated |
+| `POST` | `/admin/auth/logout` | cookie | Ends the session |
+| `GET` | `/admin/auth/me` | any admin | The signed-in admin |
+| `PATCH` | `/admin/auth/password` | any admin | `{ current_password, new_password }`; signs out the admin's other sessions |
+| `POST` | `/admin/auth/admins` | super_admin | `{ username, password, full_name, role }` |
+| `GET` | `/admin/farmers` | any admin | `?q=&district=&reservoir_id=&tank_id=&is_active=&page=&limit=` |
+| `GET` | `/admin/farmers/:farmerId` | any admin | Farmer with farm and crops |
+| `PATCH` | `/admin/farmers/:farmerId` | admin, super_admin | Profile fields, `phone`, `nic`, `is_active`, and farm details (`water_source`, `water_name`, `location_label`, `crops`) |
+| `DELETE` | `/admin/farmers/:farmerId` | admin, super_admin | Deletes the farmer, farm, crops and sessions |
+| `GET` | `/admin/db/tables` | any admin | Every table with columns, primary key and row estimate |
+| `GET` | `/admin/db/tables/:table` | any admin | `?page=&limit=&sort=&order=&<column>=<value>` |
+| `GET` | `/admin/db/tables/:table/rows/:id` | any admin | One row by primary key |
+| `POST` / `PATCH` / `DELETE` | `/admin/db/tables/:table[/rows/:id]` | admin, super_admin | Insert, update or delete rows (`admins` and `admin_sessions`: super_admin only) |
+| `GET` / `POST` | `/admin/sms/...` | any admin / admin, super_admin | Alert preview, alert send, custom SMS (moved from the old open `/sms` routes) |
+
+Password, refresh-token and NIC hashes are never returned or writable through `/admin/db`. Officers (`role = officer`) can view everything but change nothing.
 
 ### 🌊 Mahaweli Tanks & Reservoirs (Public CSV & Data API)
 

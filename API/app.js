@@ -1,14 +1,18 @@
 const express = require('express')
 const cors = require('cors')
 const apiroute = require('./routes/apiroutes.js')
-const alertroutes = require('./routes/ADMIN/alertroutes.js')
 const errorHandle = require('./middleware/errorHandles.js')
 const rateLimit = require('express-rate-limit')
 const slowDownReq = require('express-slow-down')
 const helmet =require('helmet')  //Security
 const cookieparser = require('cookie-parser')
 const authrouter = require('./routes/authroutes.js')
-const adminrouter =require('./routes/ADMIN/authroutes.js')
+const adminrouter =require('./routes/ADMIN/index.js')
+
+// Admin and farmer tokens must never be interchangeable
+if (!process.env.JWT_SECRET || !process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET === process.env.JWT_ADMIN_SECRET) {
+    throw new Error('JWT_SECRET and JWT_ADMIN_SECRET must both be set and must be different')
+}
 
 const ALLOWED_IP = '::ffff:127.0.0.1' // skip rate limit for localhost for dev purposes
 
@@ -52,15 +56,32 @@ app.use(helmet())
 app.use(cookieparser())
 app.use(express.json( {limit: '10mb'}))
 app.use(express.urlencoded( {extended: true, limit: '10mb'}))
+
+
+const CREDENTIAL_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174')
+    .split(',').map(origin => origin.trim()).filter(Boolean)
+
+app.use(cors((req, callback) => {
+    const trusted = CREDENTIAL_ORIGINS.includes(req.header('Origin'))
+    callback(null, {
+        origin: trusted ? req.header('Origin') : '*',
+        credentials: trusted,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+    })
+}))
+
+// The admin portal loads several data sets per page, so it is mounted before the public
+// slow-down and gets its own limit. Admin sign-in has its own lockout (routes/ADMIN/authroutes.js).
+const adminLimiter = rateLimit({
+    windowMs: 5*60*1000,
+    max: 600,
+    message: {error: 'Too many requests, please try again later.'}
+})
+app.use('/admin', adminLimiter, adminrouter)   // admin portal only, see routes/ADMIN/index.js
+
 app.use(slowDown)
 app.use(limiter)
-
-
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
-}))
 
 
 
@@ -77,7 +98,9 @@ app.get('/', (req, res) => {
             forecastByTankId: '/api/forecast/:id',
             reservoir:'/api/data/reservoir',
             resorvoirById: '/api/data/reservoir',
-            resorvoirHistoryByDays: '/api/data/reservoir/:id/history?days=30'
+            resorvoirHistoryByDays: '/api/data/reservoir/:id/history?days=30',
+            rivers: '/api/data/rivers',
+            canals: '/api/data/canals'
         }
     })
 })
@@ -88,11 +111,9 @@ app.get('/mahaweli-data', (req, res) => {
 })
 
 
-app.use('/sms', alertroutes)
 
 app.use('/api/data', apiroute) // for resevoirs and tanks
 app.use('/api/auth', authrouter)   //for l0gin auth
-app.use('/admin', adminrouter)
 
 // Error handling middleware
 app.use(errorHandle)

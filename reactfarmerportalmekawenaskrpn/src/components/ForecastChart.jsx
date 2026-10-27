@@ -28,10 +28,14 @@ export default function ForecastChart({ data, selected, onSelect, lang, labels, 
     let lo = Math.min(...vals); let hi = Math.max(...vals);
     if (thresholds.spill - hi < 12) hi = thresholds.spill;
     if (lo - thresholds.low < 12) lo = thresholds.low;
-    return { y0: Math.max(0, Math.floor((lo - 6) / 10) * 10), y1: Math.min(100, Math.ceil((hi + 4) / 10) * 10) };
+    // Fill can pass 100% while a tank spills.
+    return { y0: Math.max(0, Math.floor((lo - 6) / 10) * 10), y1: Math.min(120, Math.ceil((hi + 4) / 10) * 10) };
   }, [pts, thresholds]);
 
-  const x = (i) => pad.l + (i / Math.max(1, pts.length - 1)) * (W - pad.l - pad.r);
+  // Placed by date, so gaps between readings (and the 14-day jump to a prediction) keep their length.
+  const day0 = Date.parse(pts[0]?.date);
+  const span = Math.max(1, Date.parse(pts[pts.length - 1]?.date) - day0);
+  const x = (i) => pad.l + ((Date.parse(pts[i].date) - day0) / span) * (W - pad.l - pad.r);
   const y = (v) => pad.t + (1 - (v - y0) / (y1 - y0 || 1)) * (h - pad.t - pad.b);
   const hi = history.length - 1; // index of "today" (last observed)
 
@@ -91,8 +95,9 @@ export default function ForecastChart({ data, selected, onSelect, lang, labels, 
       {!compact && (
         <>
           <text x={x(hi)} y={h - 6} textAnchor="middle" fontSize="11" fontWeight="700" fill="#FFFFFF">{labels?.today}</text>
-          {indexed.filter((p) => p.kind === 'f' && (p.i - hi) % 4 === 0).map((p) => (
-            <text key={p.date} x={x(p.i)} y={h - 6} textAnchor="middle" fontSize="11" fill={COLORS.dim}>{fmtDay(p.date, lang, { day: 'numeric', month: 'short' })}</text>
+          {hi > 0 && x(hi) - x(0) > 60 && <text x={x(0)} y={h - 6} textAnchor="start" fontSize="11" fill={COLORS.dim}>{fmtDay(indexed[0].date, lang, { day: 'numeric', month: 'short' })}</text>}
+          {indexed.filter((p) => p.kind === 'f' && (forecast.length <= 3 || (p.i - hi) % 4 === 0)).map((p) => (
+            <text key={p.date} x={x(p.i)} y={h - 6} textAnchor={p.i === indexed.length - 1 ? "end" : "middle"} fontSize="11" fill={COLORS.dim}>{fmtDay(p.date, lang, { day: 'numeric', month: 'short' })}</text>
           ))}
         </>
       )}

@@ -3,7 +3,7 @@ import { IconBtn, PrimaryBtn } from '../components/UI.jsx';
 import Icon from '../components/Icon.jsx';
 import { LANGS } from '../i18n.js';
 
-const SAMPLE = { en: 'Flood alerts, tank levels and Kapawa times', si: 'ගංවතුර, වැව් මට්ටම් සහ කපාව වේලාවන්', ta: 'வெள்ளம், குள மட்டம் மற்றும் கபா நேரங்கள்' };
+const SAMPLE = { en: 'Flood alerts, tank levels and water release times', si: 'ගංවතුර, වැව් මට්ටම් සහ ජල නිකුතු වේලාවන්', ta: 'வெள்ளம், குள மட்டம் மற்றும் நீர் திறப்பு நேரங்கள்' };
 
 export default function Language() {
   const { t, lang, update } = useApp();

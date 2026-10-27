@@ -61,7 +61,7 @@ OBSERVATION_COLUMNS = (
 DB_CONFIG = {
     "host": os.environ.get("PGHOST", "localhost"),
     "port": int(os.environ.get("PGPORT", "5432")),
-    "dbname": os.environ.get("PGDATABASE", "postgres"),
+    "dbname": os.environ.get("PGDATABASE", "yala-maha-api"),
     "user": os.environ.get("PGUSER", "postgres"),
     "password": os.environ.get("PGPASSWORD", "postgres"),
 }

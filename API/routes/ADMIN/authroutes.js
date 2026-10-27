@@ -1,280 +1,203 @@
-//ADMIN Auth Routes
+//ADMIN Auth Routes (mounted at /admin/auth)
 const express = require('express')
 const crypto = require('crypto')
-const redisClient = require('../../config/redis.js')
-const { sendSms, validateSriLankanMobile } = require('../../services/smsService.js')
-const { findFarmerByPhone, createFarmer, getFarmerDetails } = require('../../services/userService.js')
 const jwt = require('jsonwebtoken')
 const db =require('../../config/db.js')
-const createAdmin =require('../../services/adminService.js')
-
+const redisClient = require('../../config/redis.js')
+const {
+  ADMIN_ROLES, validatePassword, verifyAdminLogin, createAdmin, changeAdminPassword, findAdminById
+} = require('../../services/adminService.js')
+const { requireAdmin, superAdminOnly, ADMIN_TOKEN_ROLE, ADMIN_TOKEN_AUDIENCE } = require('../../middleware/requireAdmin.js')
 
 const JWT_ADMIN_SECRET = process.env.JWT_ADMIN_SECRET
 
 const adminauthrouter = express.Router()
+const ACCESS_TOKEN_TTL = '15m'
+const REFRESH_TOKEN_MS = 7 * 24 * 60 * 60 * 1000  //7days
+const LOGIN_FAIL_LIMIT = 5
+const LOGIN_LOCK_SECONDS = 15 * 60
 
-adminauthrouter.post('/register', async (req, res, next) => {
+
+const REFRESH_COOKIE = 'adminRefreshToken'
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SAMESITE === 'none',
+  sameSite: process.env.COOKIE_SAMESITE || 'strict',
+  path: '/admin/auth'
+}
+
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex')
+
+function signAccessToken(admin, sessionId) {
+  return jwt.sign(
+    { sub: admin.admin_id, role: ADMIN_TOKEN_ROLE, access: admin.role, sessionId },
+    JWT_ADMIN_SECRET,
+    { expiresIn: ACCESS_TOKEN_TTL, audience: ADMIN_TOKEN_AUDIENCE }
+  )
+}
+
+function signRefreshToken(adminId) {
+  return jwt.sign({ sub: adminId, type: 'admin-refresh' }, JWT_ADMIN_SECRET, {
+    expiresIn: '7d', audience: ADMIN_TOKEN_AUDIENCE, jwtid: crypto.randomUUID()
+  })
+}
+
+const loginFailKey = (username) => `admin-login-fail:${username.toLowerCase()}`
+
+adminauthrouter.post('/login', async (req,res,next)=>{
   try {
-    const {
-        username,
-        password,
-        role,
-        full_name
-    } = req.body || {}
+    const { username, password } = req.body || {}
+    if (typeof username !== 'string' || !username.trim() || typeof password !== 'string' || !password) {
+      return res.status(400).json({ status: 'fail', message: 'Username and password are required.' })
+    }
+    const name = username.trim()
 
- 
+    // Too many wrong passwords for this username: wait before trying again
+    const failKey = loginFailKey(name)
+    const fails = Number(await redisClient.get(failKey)) || 0
+    if (fails >= LOGIN_FAIL_LIMIT) {
+      const wait = Math.ceil((await redisClient.ttl(failKey)) / 60)
+      return res.status(429).json({ status: 'fail', message: `Too many failed sign-ins. Try again in ${wait} minutes.` })
+      }
 
-    if ([username,password,role, full_name ].some(value => typeof value !== 'string' || !value.trim())) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Username,Password,role are required!!!'
-      })
+    const admin = await verifyAdminLogin(name, password)
+    if (!admin) {
+      await redisClient.multi().incr(failKey).expire(failKey, LOGIN_LOCK_SECONDS).exec()
+      return res.status(401).json({ status: 'fail', message: 'Wrong username or password.' })
+    }
+    await redisClient.del(failKey)
+
+    const refreshToken = signRefreshToken(admin.admin_id)
+    const session = await db.query(
+      `INSERT INTO admin_sessions (admin_id, refresh_token_hash, ip, user_agent, expires_at)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [admin.admin_id, hashToken(refreshToken), req.ip, req.headers['user-agent'] || 'unknown', new Date(Date.now() + REFRESH_TOKEN_MS)]
+    )
+    await db.query('UPDATE admins SET last_login_at = NOW() WHERE admin_id = $1', [admin.admin_id])
+
+    res.cookie(REFRESH_COOKIE, refreshToken, { ...refreshCookieOptions, maxAge: REFRESH_TOKEN_MS })
+    return res.status(200).json({
+      status: 'success',
+      message: 'Signed in.',
+      admin,
+      accessToken: signAccessToken(admin, session.rows[0].id)
+    })
+  }catch(error){
+    return next(error)
+  }
+})
+
+// New access token from the refresh cookie. The refresh token is rotated each time.
+adminauthrouter.post('/refresh_token', async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies[REFRESH_COOKIE]
+    if(!refreshToken){
+      return res.status(401).json({ status: 'fail', message: 'refreshToken not found' })
+    }
+    try {
+      jwt.verify(refreshToken, JWT_ADMIN_SECRET, { audience: ADMIN_TOKEN_AUDIENCE })
+    } catch {
+      res.clearCookie(REFRESH_COOKIE, refreshCookieOptions)
+      return res.status(401).json({ status: 'fail', message: 'refreshToken invalid or expired' })
     }
 
-
-
-    const existingAdmin = await db.query('SELECT id from admins WHERE username = $1', [username])
-    if(!existingAdmin.rows[0]){
-        return res.status(401).json(
-            {
-                status: "failed",
-                message: "Admin with that username Already Exists!!!"
-        })
+    const session = await db.query(
+      `SELECT s.id, a.admin_id, a.role
+       FROM admin_sessions s JOIN admins a ON a.admin_id = s.admin_id
+       WHERE s.refresh_token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > NOW() AND a.is_active`,
+      [hashToken(refreshToken)]
+    )
+    if (!session.rows[0]) {
+      res.clearCookie(REFRESH_COOKIE, refreshCookieOptions)
+      return res.status(401).json({ status: 'fail', message: 'Session ended, sign in again.' })
     }
+    const { id: sessionId, ...admin } = session.rows[0]
 
-
-    
-
-    const farmer = await createFarmer({
-      full_name: full_name.trim(),
-      nic: nic.trim(),
-      phone: phoneCheck.normalized,
-      address: address.trim(),
-      district: district.trim(),
-      division: division?.trim(),
-      farm_latitude,
-      farm_longitude,
-      reservoir_id,
-      tank_id,
-      land_acres,
-      primary_crop
-    })
-
-    //JWT AUTHENITACTION!!!
-    const hashedNic = farmer.hashedNic
-    const farmer_id = farmer.result.farmer_id
-    const refreshToken = jwt.sign({ id:farmer_id  }, JWT_ADMIN_SECRET, { expiresIn: '7d' })
-    const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex')
-    const ip = req.ip
-    const userAgent = req.headers['user-agent'] || 'unknown'
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    
-    const family_id = null
-    console.log(farmer ,"DBF : Farmer OBj")
-    const sessionResult = await db.query(
-      `INSERT INTO farmer_sessions
-        (farmer_id, refresh_token_hash,family_id, ip, user_agent, expires_at)
-        VALUES ($1, $2, COALESCE($3, gen_random_uuid()), $4, $5, $6)
-        RETURNING id, family_id, farmer_id, expires_at`,
-      [farmer_id, refreshTokenHash, family_id, ip, userAgent, expiresAt]
+    const newRefreshToken = signRefreshToken(admin.admin_id)
+    await db.query(
+      `UPDATE admin_sessions SET refresh_token_hash = $2, expires_at = $3, last_used_at = NOW() WHERE id = $1`,
+      [sessionId, hashToken(newRefreshToken), new Date(Date.now() + REFRESH_TOKEN_MS)]
     )
 
-    const accessToken = jwt.sign(
-      { id: farmer_id, sessionId: sessionResult.rows[0].id },
-      JWT_ADMIN_SECRET,
-      { expiresIn: '15m' }
+    res.cookie(REFRESH_COOKIE, newRefreshToken, { ...refreshCookieOptions, maxAge: REFRESH_TOKEN_MS })
+    return res.status(200).json({ status: 'success', accessToken: signAccessToken(admin, sessionId) })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+adminauthrouter.post('/logout', async(req, res, next)=>{
+  try {
+    const refreshToken = req.cookies[REFRESH_COOKIE]
+    if (refreshToken) {
+      await db.query('UPDATE admin_sessions SET revoked_at = NOW() WHERE refresh_token_hash = $1 AND revoked_at IS NULL', [hashToken(refreshToken)])
+    }
+    res.clearCookie(REFRESH_COOKIE, refreshCookieOptions)
+    return res.status(200).json({ status: 'success', message: 'Signed out.' })
+  }catch(error){
+    return next(error)
+  }
+})
+
+adminauthrouter.get('/me', requireAdmin, async (req,res, next) => {
+  try {
+    return res.status(200).json({ status: 'success', admin: await findAdminById(req.admin.admin_id) })
+  }catch(error){
+    return next(error)
+  }
+})
+
+adminauthrouter.patch('/password', requireAdmin, async (req, res, next) => {
+  try {
+    const { current_password, new_password } = req.body || {}
+    if (typeof current_password !== 'string' || !current_password) {
+      return res.status(400).json({ status: 'fail', message: 'current_password is required.' })
+    }
+    const problem = validatePassword(new_password)
+    if (problem) {
+      return res.status(400).json({ status: 'fail', message: problem })
+        }
+    if (!(await changeAdminPassword(req.admin.admin_id, current_password, new_password))) {
+      return res.status(401).json({ status: 'fail', message: 'Current password is wrong.' })
+    }
+    // Sign out every other session of this admin
+    await db.query(
+      'UPDATE admin_sessions SET revoked_at = NOW() WHERE admin_id = $1 AND id <> $2 AND revoked_at IS NULL',
+      [req.admin.admin_id, req.adminSessionId]
     )
+    return res.status(200).json({ status: 'success', message: 'Password changed.' })
+  } catch (error) {
+    return next(error)
+  }
+})
 
-    await redisClient.del(`verified-phone:${phoneCheck.normalized}`)
-
-    res.cookie("refreshToken", refreshToken , {
-      httpOnly:true,
-      secure:true,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000  //7days maxAGe
-
-    })
-    res.status(201).json({ status: 'success', message: 'Farmer registered.', data: farmer.result , accessToken: accessToken})
+// Create another admin account (super_admin only)
+adminauthrouter.post('/admins', requireAdmin, superAdminOnly, async (req, res, next) => {
+  try {
+    const { username, password, full_name, role } = req.body || {}
+    if ([username, full_name].some(value => typeof value !== 'string' || !value.trim())) {
+      return res.status(400).json({ status: 'fail', message: 'username and full_name are required.' })
+    }
+    if (!/^[a-zA-Z0-9_.-]{3,40}$/.test(username.trim())) {
+      return res.status(400).json({ status: 'fail', message: 'username must be 3-40 letters, numbers, dots, dashes or underscores.' })
+    }
+    if (!ADMIN_ROLES.includes(role)) {
+      return res.status(400).json({ status: 'fail', message: `role must be one of: ${ADMIN_ROLES.join(', ')}.` })
+    }
+    const problem = validatePassword(password)
+    if (problem) {
+      return res.status(400).json({ status: 'fail', message: problem })
+    }
+    const admin = await createAdmin({ username: username.trim(), password, full_name: full_name.trim(), role })
+    return res.status(201).json({ status: 'success', message: 'Admin created.', data: admin })
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ status: 'fail', message: 'A farmer with this phone or NIC already exists.' })
+      return res.status(409).json({ status: 'fail', message: 'An admin with that username already exists.' })
     }
     return next(error)
   }
-
-
-
-    
-
 })
 
 
-adminauthrouter.route('/profile').get(getFarmerDetails)
-
-
-adminauthrouter.route('/refresh_token').get(async (req,res)=>{
-  const refreshToken =  req.cookies.refreshToken
-  if(!refreshToken){
-      return res.status(401).json(
-        {
-          status: "failed",
-          message: "refreshToken not found"
-        }
-      )
-  }
-  const decoded =jwt.verify(refreshToken, JWT_ADMIN_SECRET)
-
-  const refreshTokenHash =crypto.createHash('sha256').update(refreshToken).digest('hex')
-
-  const session = await db.query('SELECT * from farmer_sessions WHERE refresh_token_hash= $1 AND revoked=$2', [refreshTokenHash, false])
-
-  if(!session.rows[0]){
-      return res.status(401).json(
-        {
-          status: "failed",
-          message: "Invalid refresh t0ken"
-        }
-      )
-  }
-  
-  const accessToken =jwt.sign({id: decoded.id}, JWT_ADMIN_SECRET, { expiresIn: "15m"})
-
-  const newRotatedRefreshToken = jwt.sign({id:decoded.id}, JWT_ADMIN_SECRET, { expiresIn: "7d"})
-  res.cookie('refreshToken', newRotatedRefreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'strict'
-  })
-
-
-
-  const newRotatedRefreshTokenHash = crypto.createHash('sha256').update(newRotatedRefreshToken).digest('hex')
-  console.log(session.rows)
-  await db.query("UPDATE farmer_sessions SET refresh_token_hash = $1 WHERE id=$2", [newRotatedRefreshTokenHash, session.rows[0].id])
-  
-  res.status(200).json(
-    {
-
-      message: "Access Token refreshed sucessfully",
-      accessToken
-    }
-  )
-})
-
-adminauthrouter.route('/logout').post( async(req, res)=>{
-
-    const refreshToken =req.cookies.refreshToken
-    if(!refreshToken){
-        return res.status(401).json({
-          status: "failed",
-          message: "refreshToken was not Provided"
-        }
-        )
-    }
-    const refreshTokenHash = crypto.createHash("sha256").update(refreshToken).digest('hex')
-    console.log(refreshTokenHash)
-    const session = await db.query('SELECT * from farmer_sessions WHERE refresh_token_hash= $1 AND revoked=$2', [refreshTokenHash, false])
-    console.log(session.rows.length)
-    if(!session || session.rows.length === 0){
-      return res.status(400).json(
-        {
-          status: "failed",
-          message: "invalid refreshToken"
-        }
-      )
-    }
-
-    await db.query("UPDATE farmer_sessions SET revoked = $1 WHERE refresh_token_hash = $2", [true, refreshTokenHash])
-    res.clearCookie("refreshToken")
-    res.status(200).json(
-      {
-        status: "success",
-        message: "Successfully Logged Out"
-      }
-    )
-})
-
-
-
-adminauthrouter.route('/login').post( async (req,res)=>{
-    const {nic, phone} = req.body
-    const Usrnic = nic.trim().toUpperCase()
-    
-
-    const phoneCheck = validateSriLankanMobile(phone).normalized
-    console.log(Usrnic)
-    console.log(phoneCheck)
-    function hashNic(Usrnic) {
-    if (!process.env.NIC_PEPPER) throw new Error('NIC_PEPPER is not set');
-    return crypto
-      .createHmac('sha256', process.env.NIC_PEPPER)
-      .update(Usrnic)
-      .digest('hex');
-    }
-  
-    const hashedNic = hashNic(Usrnic)
-    console.log(hashedNic)
-
-    const usr = await db.query('SELECT farmer_id, full_name,phone,address,district,division,farm_latitude, farm_longitude,reservoir_id, tank_id,land_acres, primary_crop, created_at, updated_at  FROM farmers WHERE hashed_nic= $1', [hashedNic])
-
-    if(!usr.rows[0]){
-        return res.status(400).json(
-          {
-            status: "failed",
-            message: "Farmer with that NIC Not Registered!"
-          }
-        )
-    }
-    const validusr = await db.query('SELECT farmer_id FROM farmers WHERE phone= $1 AND hashed_nic= $2', [phoneCheck, hashedNic])
-
-    if(!validusr.rows[0]){
-          return res.status(401).json(
-            {
-              status: "failed",
-              message: "Wrong Phone Number, Make sure you provide the same number used for Registering"
-            }
-          )
-    }
-
-    const farmer_id = validusr.rows[0].farmer_id
-    const refreshToken = jwt.sign({id: farmer_id}, JWT_ADMIN_SECRET,{expiresIn:"7d"})
-    const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex')
-
-    
-    const ip = req.ip
-    const userAgent = req.headers['user-agent'] || 'unknown'
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    console.log(validusr.rows[0])
-    
-    const family_id = null
-
-
-     const session = await db.query('INSERT INTO farmer_sessions (farmer_id, refresh_token_hash, ip,user_agent,expires_at ) VALUES($1,$2,$3,$4,$5) RETURNING id, family_id, farmer_id, expires_at', [farmer_id, refreshTokenHash, ip,userAgent, expiresAt])
-
-
-     const accessToken = jwt.sign(
-      { id: farmer_id, sessionId: session.rows[0].id },
-      JWT_ADMIN_SECRET,
-      { expiresIn: '15m' }
-    )
-
-     res.cookie("refreshToken", refreshToken , {
-      httpOnly:true,
-      secure:true,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000  //7days maxAGe
-
-    })
-
-    res.status(200).json(
-      {
-          status: "success",
-          message: "Logged in Successfully",
-          farmer: usr.rows[0],
-          accessToken
-      }
-    )
-   
-})
 
 module.exports = adminauthrouter

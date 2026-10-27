@@ -75,6 +75,12 @@ LEVEL_COLUMNS = (
     "spilling_rate_cusec",
 )
 
+# Coordinates that are wrong in the ArcGIS source, by reservoir name -> (latitude, longitude).
+# Mailagama comes with Karawila's coordinates (Sella Kataragama); these were checked by hand.
+COORDINATE_FIXES = {
+    "Mailagama": (6.425358, 81.269876),
+}
+
 TEXT_COLUMNS = {"name", "district", "division", "is_spilling", "ds_impact", "type"}
 DATE_COLUMNS = {"reading_date"}
 
@@ -278,6 +284,10 @@ def build_record(row, res_type):
     for column in ("latitude", "longitude"):
         if record[column] is not None:
             record[column] = round(record[column], 6)
+
+    # Applied before saving, so the reservoir is found by its corrected coordinates
+    if record["name"] in COORDINATE_FIXES:
+        record["latitude"], record["longitude"] = COORDINATE_FIXES[record["name"]]
 
     if (
         record["active_capacity_acft"] is None

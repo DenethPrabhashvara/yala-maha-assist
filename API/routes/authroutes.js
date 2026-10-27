@@ -2,9 +2,11 @@ const express = require('express')
 const crypto = require('crypto')
 const redisClient = require('../config/redis.js')
 const { sendSms, validateSriLankanMobile } = require('../services/smsService.js')
-const { findFarmerByPhone, createFarmer, getFarmerDetails } = require('../services/userService.js')
+const { findFarmerByPhone, createFarmer, getFarmerDetails, updateFarmer, validateFarmerChanges, FARMER_COLUMNS, UPDATABLE_FIELDS } = require('../services/userService.js')
 const jwt = require('jsonwebtoken')
 const db =require('../config/db.js')
+const requireFarmer = require('../middleware/requireFarmer.js')
+const { validateFarm, saveFarm, getFarm, withTransaction } = require('../services/farmService.js')
 
 
 const JWT_SECRET = process.env.JWT_SECRET
@@ -12,6 +14,16 @@ const JWT_SECRET = process.env.JWT_SECRET
 const authrouter = express.Router()
 const OTP_TTL_SECONDS = 3 * 60
 const VERIFIED_PHONE_TTL_SECONDS = 15 * 60
+const REFRESH_TOKEN_MS = 7 * 24 * 60 * 60 * 1000  //7days
+
+// Secure cookies need https, so they are only required in production.
+// Set COOKIE_SAMESITE=none (with https) if the portal and API are on different sites.
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SAMESITE === 'none',
+  sameSite: process.env.COOKIE_SAMESITE || 'strict',
+  path: '/api/auth'
+}
 
 authrouter.post('/send-otp', async (req, res, next) => {
   try {
@@ -75,6 +87,13 @@ authrouter.post('/verify-otp', async (req, res, next) => {
     await redisClient.del(key)
 
     if (existingFarmer) {
+      // /login checks this key, so the account can only be opened by whoever has the phone
+      await redisClient.set(
+        `verified-login:${phoneCheck.normalized}`,
+        '1',
+        'EX',
+        VERIFIED_PHONE_TTL_SECONDS
+      )
       return res.status(200).json({
         status: 'success',
         message: 'Phone verified. A farmer account already exists for this number.',
@@ -142,6 +161,12 @@ authrouter.post('/register', async (req, res, next) => {
       })
     }
 
+    // Farm details: water source, location label and the crop list (optional here)
+    const farmCheck = validateFarm(req.body)
+    if (farmCheck.error) {
+      return res.status(400).json({ status: 'fail', message: farmCheck.error })
+    }
+
     const verified = await redisClient.get(`verified-phone:${phoneCheck.normalized}`)
     if (!verified) {
       return res.status(403).json({ status: 'fail', message: 'Verify this phone number before registering.' })
@@ -165,13 +190,14 @@ authrouter.post('/register', async (req, res, next) => {
       reservoir_id,
       tank_id,
       land_acres,
-      primary_crop
+      primary_crop,
+      farm: farmCheck.farm
     })
 
     //JWT AUTHENITACTION!!!
     const hashedNic = farmer.hashedNic
     const farmer_id = farmer.result.farmer_id
-    const refreshToken = jwt.sign({ id:farmer_id  }, JWT_SECRET, { expiresIn: '7d' })
+    const refreshToken = jwt.sign({ id:farmer_id  }, JWT_SECRET, { expiresIn: '7d', jwtid: crypto.randomUUID() })
     const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex')
     const ip = req.ip
     const userAgent = req.headers['user-agent'] || 'unknown'
@@ -195,13 +221,7 @@ authrouter.post('/register', async (req, res, next) => {
 
     await redisClient.del(`verified-phone:${phoneCheck.normalized}`)
 
-    res.cookie("refreshToken", refreshToken , {
-      httpOnly:true,
-      secure:true,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000  //7days maxAGe
-
-    })
+    res.cookie("refreshToken", refreshToken , { ...refreshCookieOptions, maxAge: REFRESH_TOKEN_MS })
     res.status(201).json({ status: 'success', message: 'Farmer registered.', data: farmer.result , accessToken: accessToken})
   } catch (error) {
     if (error.code === '23505') {
@@ -217,7 +237,67 @@ authrouter.post('/register', async (req, res, next) => {
 })
 
 
-authrouter.route('/profile').get(getFarmerDetails)
+authrouter.route('/profile')
+  .get(requireFarmer, getFarmerDetails)
+  .patch(requireFarmer, async (req, res, next) => {
+    try {
+      if (!UPDATABLE_FIELDS.some(field => req.body?.[field] !== undefined)) {
+        return res.status(400).json({ status: 'fail', message: 'Nothing to update.' })
+      }
+      const { error, changes } = validateFarmerChanges(req.body)
+      if (error) {
+        return res.status(400).json({ status: 'fail', message: error })
+      }
+
+      const farmer = await updateFarmer(req.farmerId, changes)
+      if (!farmer) {
+        return res.status(404).json({ status: 'fail', message: 'Farmer account not found.' })
+      }
+      return res.status(200).json({ status: 'success', message: 'Profile updated.', data: farmer })
+    } catch (error) {
+      // 23514 = CHECK constraint (e.g. both water sources set), 23503 = unknown reservoir/tank id
+      if (error.code === '23514' || error.code === '23503') {
+        return res.status(400).json({ status: 'fail', message: 'Invalid farm location or water source.' })
+      }
+      return next(error)
+    }
+  })
+
+
+// The signed-in farmer's farm details. PUT replaces them, including the whole crop list.
+authrouter.route('/farm')
+  .get(requireFarmer, async (req, res, next) => {
+    try {
+      const farmer = await db.query('SELECT farm_id FROM farmers WHERE farmer_id = $1', [req.farmerId])
+      if (!farmer.rows[0]) {
+        return res.status(404).json({ status: 'fail', message: 'Farmer account not found.' })
+      }
+      const farm = await getFarm(farmer.rows[0].farm_id)
+      return res.status(200).json({ status: 'success', data: farm || { farm_id: farmer.rows[0].farm_id, crops: [] } })
+    } catch (error) {
+      return next(error)
+    }
+  })
+  .put(requireFarmer, async (req, res, next) => {
+    try {
+      const farmCheck = validateFarm(req.body, { requireCrops: true })
+      if (farmCheck.error) {
+        return res.status(400).json({ status: 'fail', message: farmCheck.error })
+      }
+      const farm = await withTransaction(async (client) => {
+        const farmer = await client.query('SELECT farm_id FROM farmers WHERE farmer_id = $1 FOR UPDATE', [req.farmerId])
+        if (!farmer.rows[0]) return null
+        await saveFarm(client, farmer.rows[0].farm_id, farmCheck.farm)
+        return getFarm(farmer.rows[0].farm_id, client)
+      })
+      if (!farm) {
+        return res.status(404).json({ status: 'fail', message: 'Farmer account not found.' })
+      }
+      return res.status(200).json({ status: 'success', message: 'Farm updated.', data: farm })
+    } catch (error) {
+      return next(error)
+    }
+  })
 
 
 authrouter.route('/refresh_token').get(async (req,res)=>{
@@ -239,7 +319,7 @@ authrouter.route('/refresh_token').get(async (req,res)=>{
 
   const refreshTokenHash =crypto.createHash('sha256').update(refreshToken).digest('hex')
 
-  const session = await db.query('SELECT * from farmer_sessions WHERE refresh_token_hash= $1 AND revoked=$2', [refreshTokenHash, false])
+  const session = await db.query('SELECT id from farmer_sessions WHERE refresh_token_hash= $1 AND revoked=$2 AND expires_at > NOW()', [refreshTokenHash, false])
 
   if(!session.rows[0]){
       return res.status(401).json(
@@ -249,21 +329,19 @@ authrouter.route('/refresh_token').get(async (req,res)=>{
         }
       )
   }
-  
-  const accessToken =jwt.sign({id: decoded.id}, JWT_SECRET, { expiresIn: "15m"})
+  const sessionId = session.rows[0].id
 
-  const newRotatedRefreshToken = jwt.sign({id:decoded.id}, JWT_SECRET, { expiresIn: "7d"})
-  res.cookie('refreshToken', newRotatedRefreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'strict'
-  })
+  const accessToken =jwt.sign({id: decoded.id, sessionId}, JWT_SECRET, { expiresIn: "15m"})
 
-
-
+  const newRotatedRefreshToken = jwt.sign({id:decoded.id}, JWT_SECRET, { expiresIn: "7d", jwtid: crypto.randomUUID() })
   const newRotatedRefreshTokenHash = crypto.createHash('sha256').update(newRotatedRefreshToken).digest('hex')
-  console.log(session.rows)
-  await db.query("UPDATE farmer_sessions SET refresh_token_hash = $1 WHERE id=$2", [newRotatedRefreshTokenHash, session.rows[0].id])
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_MS)
+  await db.query(
+    "UPDATE farmer_sessions SET refresh_token_hash = $1, expires_at = $2, last_used_at = NOW() WHERE id=$3",
+    [newRotatedRefreshTokenHash, expiresAt, sessionId]
+  )
+
+  res.cookie('refreshToken', newRotatedRefreshToken, { ...refreshCookieOptions, maxAge: REFRESH_TOKEN_MS })
   
   res.status(200).json(
     {
@@ -297,8 +375,8 @@ authrouter.route('/logout').post( async(req, res)=>{
       )
     }
 
-    await db.query("UPDATE farmer_sessions SET revoked = $1 WHERE refresh_token_hash = $2", [true, refreshTokenHash])
-    res.clearCookie("refreshToken")
+    await db.query("UPDATE farmer_sessions SET revoked = $1, revoked_at = NOW() WHERE refresh_token_hash = $2", [true, refreshTokenHash])
+    res.clearCookie("refreshToken", refreshCookieOptions)
     res.status(200).json(
       {
         status: "success",
@@ -309,14 +387,24 @@ authrouter.route('/logout').post( async(req, res)=>{
 
 
 
-authrouter.route('/login').post( async (req,res)=>{
-    const {nic, phone} = req.body
-    const Usrnic = nic.trim().toUpperCase()
-    
+authrouter.route('/login').post( async (req,res,next)=>{
+  try {
+    const {nic, phone} = req.body || {}
+    if (typeof nic !== 'string' || !nic.trim()) {
+      return res.status(400).json({ status: 'fail', message: 'NIC is required.' })
+    }
 
-    const phoneCheck = validateSriLankanMobile(phone).normalized
-    console.log(Usrnic)
-    console.log(phoneCheck)
+    const phoneCheck = validateSriLankanMobile(phone)
+    if (!phoneCheck.valid) {
+      return res.status(400).json({ status: 'fail', message: phoneCheck.error })
+    }
+
+    // Set by /verify-otp for a registered number: the OTP is required to sign in
+    const loginKey = `verified-login:${phoneCheck.normalized}`
+    if (!await redisClient.get(loginKey)) {
+      return res.status(403).json({ status: 'fail', message: 'Verify this phone number with the SMS code before signing in.' })
+    }
+
     function hashNic(Usrnic) {
     if (!process.env.NIC_PEPPER) throw new Error('NIC_PEPPER is not set');
     return crypto
@@ -324,42 +412,28 @@ authrouter.route('/login').post( async (req,res)=>{
       .update(Usrnic)
       .digest('hex');
     }
-  
-    const hashedNic = hashNic(Usrnic)
-    console.log(hashedNic)
 
-    const usr = await db.query('SELECT farmer_id, full_name,phone,address,district,division,farm_latitude, farm_longitude,reservoir_id, tank_id,land_acres, primary_crop, created_at, updated_at  FROM farmers WHERE hashed_nic= $1', [hashedNic])
+    const hashedNic = hashNic(nic.trim().toUpperCase())
 
-    if(!usr.rows[0]){
-        return res.status(400).json(
-          {
-            status: "failed",
-            message: "Farmer with that NIC Not Registered!"
-          }
-        )
-    }
-    const validusr = await db.query('SELECT farmer_id FROM farmers WHERE phone= $1 AND hashed_nic= $2', [phoneCheck, hashedNic])
+    const validusr = await db.query(`SELECT ${FARMER_COLUMNS} FROM farmers WHERE phone= $1 AND hashed_nic= $2`, [phoneCheck.normalized, hashedNic])
 
     if(!validusr.rows[0]){
           return res.status(401).json(
             {
               status: "failed",
-              message: "Wrong Phone Number, Make sure you provide the same number used for Registering"
+              message: "That NIC does not match the one registered with this phone number."
             }
           )
     }
-
-    const farmer_id = validusr.rows[0].farmer_id
-    const refreshToken = jwt.sign({id: farmer_id}, JWT_SECRET,{expiresIn:"7d"})
+    const farmer = { ...validusr.rows[0], farm: await getFarm(validusr.rows[0].farm_id) }
+    const farmer_id = farmer.farmer_id
+    const refreshToken = jwt.sign({id: farmer_id}, JWT_SECRET,{expiresIn:"7d", jwtid: crypto.randomUUID()})
     const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex')
 
     
     const ip = req.ip
     const userAgent = req.headers['user-agent'] || 'unknown'
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    console.log(validusr.rows[0])
-    
-    const family_id = null
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_MS)
 
 
      const session = await db.query('INSERT INTO farmer_sessions (farmer_id, refresh_token_hash, ip,user_agent,expires_at ) VALUES($1,$2,$3,$4,$5) RETURNING id, family_id, farmer_id, expires_at', [farmer_id, refreshTokenHash, ip,userAgent, expiresAt])
@@ -371,23 +445,20 @@ authrouter.route('/login').post( async (req,res)=>{
       { expiresIn: '15m' }
     )
 
-     res.cookie("refreshToken", refreshToken , {
-      httpOnly:true,
-      secure:true,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000  //7days maxAGe
-
-    })
+     await redisClient.del(loginKey)
+     res.cookie("refreshToken", refreshToken , { ...refreshCookieOptions, maxAge: REFRESH_TOKEN_MS })
 
     res.status(200).json(
       {
           status: "success",
           message: "Logged in Successfully",
-          farmer: usr.rows[0],
+          farmer,
           accessToken
       }
     )
-   
+  } catch (error) {
+    return next(error)
+  }
 })
 
 module.exports = authrouter

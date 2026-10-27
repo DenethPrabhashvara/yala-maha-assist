@@ -43,7 +43,7 @@ exports.getResById = async (req, res, next) =>{
 
 exports.getReslevels = async (req, res , next)=>{
     try{
-        reslevel = await db.query(`SELECT * FROM reservoir_levels WHERE reservoir_id=$1 AND reading_date >= CURRENT_DATE - ($2 || 'days')::INTERVAL`, [req.params.id, req.query.days] )
+        reslevel = await db.query(`SELECT * FROM reservoir_levels WHERE reservoir_id=$1 AND reading_date >= CURRENT_DATE - ($2 || 'days')::INTERVAL ORDER BY reading_date`, [req.params.id, req.query.days] )
         res.status(200).json(
             {
                 status:"success",
