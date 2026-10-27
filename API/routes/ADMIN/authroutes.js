@@ -1,11 +1,11 @@
 //ADMIN Auth Routes
 const express = require('express')
 const crypto = require('crypto')
-const redisClient = require('../config/redis.js')
+const redisClient = require('../../config/redis.js')
 const { sendSms, validateSriLankanMobile } = require('../../services/smsService.js')
-const { findFarmerByPhone, createFarmer, getFarmerDetails } = require('../services/userService.js')
+const { findFarmerByPhone, createFarmer, getFarmerDetails } = require('../../services/userService.js')
 const jwt = require('jsonwebtoken')
-const db =require('../config/db.js')
+const db =require('../../config/db.js')
 const createAdmin =require('../../services/adminService.js')
 
 
